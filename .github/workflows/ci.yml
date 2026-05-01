@@ -12,6 +12,7 @@ permissions:
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  ECR_NAMESPACE: ${{ vars.ECR_NAMESPACE }}
 
 jobs:
   detect-changes:
@@ -142,4 +143,4 @@ jobs:
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - run: IMAGE_PREFIX="$ECR_REGISTRY" IMAGE_TAG="${{ github.sha }}" node scripts/workspace-build-image.mjs --images "${{ needs.detect-changes.outputs.images }}" --additional-tags latest --push
+      - run: IMAGE_PREFIX="$ECR_REGISTRY/$ECR_NAMESPACE" IMAGE_TAG="${{ github.sha }}" node scripts/workspace-build-image.mjs --images "${{ needs.detect-changes.outputs.images }}" --additional-tags latest --push
