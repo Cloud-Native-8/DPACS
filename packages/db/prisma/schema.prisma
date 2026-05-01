@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model AccessEvent {
+  eventId    String   @id @map("event_id")
+  userId     String   @map("user_id")
+  doorId     String   @map("door_id")
+  factoryId  String   @map("factory_id")
+  in         Boolean
+  pass       Boolean
+  reason     String
+  occurredAt DateTime @default(now()) @map("occurred_at")
+  payload    Json
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId, occurredAt(sort: Desc)])
+  @@index([factoryId, occurredAt(sort: Desc)])
+  @@index([occurredAt(sort: Desc)])
+  @@map("access_events")
+}

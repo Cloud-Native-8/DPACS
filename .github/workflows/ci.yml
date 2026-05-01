@@ -1,0 +1,132 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d app"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/app
+      AWS_REGION: ap-northeast-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      SQS_QUEUE_URL: https://sqs.ap-northeast-1.amazonaws.com/000000000000/access-events
+      VALKEY_URL: redis://localhost:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm db:generate
+
+      - run: pnpm --filter @repo/db migrate:deploy
+
+      - run: pnpm test
+
+      - run: pnpm build:app
+
+  docker-build:
+    needs: test-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build:image
+
+  docker-push-disabled:
+    if: false && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && vars.ECR_REGISTRY != '' && vars.AWS_ROLE_TO_ASSUME != ''
+    needs: docker-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push access
+        run: |
+          docker build -f apps/access/Dockerfile \
+            -t $ECR_REGISTRY/access:${{ github.sha }} \
+            -t $ECR_REGISTRY/access:latest \
+            .
+          docker push $ECR_REGISTRY/access:${{ github.sha }}
+          docker push $ECR_REGISTRY/access:latest
+
+      - name: Build and push worker
+        run: |
+          docker build -f apps/worker/Dockerfile \
+            -t $ECR_REGISTRY/worker:${{ github.sha }} \
+            -t $ECR_REGISTRY/worker:latest \
+            .
+          docker push $ECR_REGISTRY/worker:${{ github.sha }}
+          docker push $ECR_REGISTRY/worker:latest
+
+      - name: Build and push report
+        run: |
+          docker build -f apps/report/Dockerfile \
+            -t $ECR_REGISTRY/report:${{ github.sha }} \
+            -t $ECR_REGISTRY/report:latest \
+            .
+          docker push $ECR_REGISTRY/report:${{ github.sha }}
+          docker push $ECR_REGISTRY/report:latest
+
+      - name: Build and push db-migrate
+        run: |
+          docker build -f packages/db/Dockerfile.migrate \
+            -t $ECR_REGISTRY/db-migrate:${{ github.sha }} \
+            -t $ECR_REGISTRY/db-migrate:latest \
+            .
+          docker push $ECR_REGISTRY/db-migrate:${{ github.sha }}
+          docker push $ECR_REGISTRY/db-migrate:latest

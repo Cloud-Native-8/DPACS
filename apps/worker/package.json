@@ -1,0 +1,15 @@
+{
+  "name": "@repo/worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "build": "node --check src/index.js",
+    "start": "node src/index.js",
+    "test": "node --eval \"console.log('worker: no tests')\""
+  },
+  "dependencies": {
+    "@repo/db": "workspace:*",
+    "@repo/queue": "workspace:*"
+  }
+}

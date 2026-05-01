@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: report
+  namespace: app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: report
+  template:
+    metadata:
+      labels:
+        app: report
+    spec:
+      containers:
+        - name: report
+          image: <account-id>.dkr.ecr.ap-northeast-1.amazonaws.com/report:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3000"
+            - name: DB_POOL_MAX
+              value: "5"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: report-env
+                  key: DATABASE_URL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: report
+  namespace: app
+spec:
+  type: LoadBalancer
+  selector:
+    app: report
+  ports:
+    - port: 80
+      targetPort: 3000

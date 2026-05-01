@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Access Check</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f4f7fb;
+        color: #112031;
+      }
+
+      main {
+        max-width: 720px;
+        margin: 40px auto;
+        padding: 24px;
+      }
+
+      .card {
+        background: #fff;
+        border: 1px solid #d8e1eb;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 10px 30px rgba(17, 32, 49, 0.08);
+      }
+
+      h1 {
+        margin-top: 0;
+      }
+
+      form {
+        display: grid;
+        gap: 12px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        font-size: 14px;
+      }
+
+      input,
+      select,
+      button {
+        padding: 10px 12px;
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        background: #112031;
+        color: #fff;
+        cursor: pointer;
+      }
+
+      pre {
+        margin: 16px 0 0;
+        padding: 16px;
+        overflow: auto;
+        background: #0f172a;
+        color: #d7e3f4;
+        border-radius: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="card">
+        <h1>Access Check Playground</h1>
+        <form id="check-form">
+          <label>
+            User ID
+            <input name="userId" value="E10001" required />
+          </label>
+          <label>
+            Door ID
+            <input name="doorId" value="FAB-A-01" required />
+          </label>
+          <label>
+            Factory ID
+            <input name="factoryId" value="FAB-A" required />
+          </label>
+          <label>
+            Direction
+            <select name="in">
+              <option value="true">ENTER</option>
+              <option value="false">EXIT</option>
+            </select>
+          </label>
+          <button type="submit">POST /check</button>
+        </form>
+        <pre id="result">Submit to test /check</pre>
+      </section>
+    </main>
+    <script>
+      const form = document.getElementById("check-form");
+      const result = document.getElementById("result");
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const formData = new FormData(form);
+        const payload = {
+          userId: formData.get("userId"),
+          doorId: formData.get("doorId"),
+          factoryId: formData.get("factoryId"),
+          in: formData.get("in") === "true"
+        };
+
+        result.textContent = "Loading...";
+
+        try {
+          const response = await fetch("/check", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const json = await response.json();
+          result.textContent = JSON.stringify(json, null, 2);
+        } catch (error) {
+          result.textContent = error.message;
+        }
+      });
+    </script>
+  </body>
+</html>

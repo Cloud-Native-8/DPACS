@@ -1,0 +1,15 @@
+{
+  "name": "@repo/queue",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "build": "node --check src/index.js",
+    "test": "node --eval \"console.log('queue: no tests')\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.750.0"
+  }
+}
