@@ -9,18 +9,22 @@ permissions:
   contents: read
   id-token: write
 
-env:
-  AWS_REGION: ${{ vars.AWS_REGION != '' && vars.AWS_REGION || 'ap-northeast-1' }}
-
 jobs:
   test:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Validate repository variables
+        run: |
+          echo "vars.AWS_REGION='${{ vars.AWS_REGION }}'"
+          echo "vars.AWS_ROLE_TO_ASSUME='${{ vars.AWS_ROLE_TO_ASSUME }}'"
+          test -n "${{ vars.AWS_REGION }}" || { echo "vars.AWS_REGION is empty"; exit 1; }
+          test -n "${{ vars.AWS_ROLE_TO_ASSUME }}" || { echo "vars.AWS_ROLE_TO_ASSUME is empty"; exit 1; }
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
 
       - name: Who am I
