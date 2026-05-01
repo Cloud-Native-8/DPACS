@@ -1,7 +1,7 @@
 name: aws-auth-test
 
 on:
-  pull_request:
+  pull_request_target:
     branches: [main, dev]
   workflow_dispatch:
 
