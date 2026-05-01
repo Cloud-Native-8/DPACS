@@ -14,7 +14,37 @@ env:
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
 
 jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.changed.outputs.mode }}
+      should_run: ${{ steps.changed.outputs.should_run }}
+      packages: ${{ steps.changed.outputs.packages }}
+      images: ${{ steps.changed.outputs.images }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - id: changed
+        run: |
+          node scripts/changed-targets.mjs \
+            --base "${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}" \
+            --head "${{ github.sha }}" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Print detected targets
+        run: |
+          echo "mode=${{ steps.changed.outputs.mode }}"
+          echo "should_run=${{ steps.changed.outputs.should_run }}"
+          echo "packages=${{ steps.changed.outputs.packages }}"
+          echo "images=${{ steps.changed.outputs.images }}"
+          echo '${{ steps.changed.outputs.json }}'
+
   test-build:
+    if: needs.detect-changes.outputs.should_run == 'true'
+    needs: detect-changes
     runs-on: ubuntu-latest
 
     services:
@@ -41,50 +71,67 @@ jobs:
       VALKEY_URL: redis://localhost:6379
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
+          package-manager-cache: false
+
+      - run: corepack enable
+
+      - id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
 
       - run: pnpm install --frozen-lockfile
-
-      - run: pnpm db:generate
 
       - run: pnpm --filter @repo/db migrate:deploy
 
-      - run: pnpm test
-
-      - run: pnpm build:app
+      - run: node scripts/workspace-check.mjs --packages "${{ needs.detect-changes.outputs.packages }}"
 
   docker-build:
-    needs: test-build
+    if: needs.detect-changes.outputs.images != '' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/dev')
+    needs: [detect-changes, test-build]
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
+          package-manager-cache: false
+
+      - run: corepack enable
+
+      - id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm build:image
+      - run: node scripts/workspace-build-image.mjs --images "${{ needs.detect-changes.outputs.images }}"
 
-  docker-push-disabled:
-    if: false && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && vars.ECR_REGISTRY != '' && vars.AWS_ROLE_TO_ASSUME != ''
-    needs: docker-build
+  docker-push:
+    if: needs.detect-changes.outputs.images != '' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ECR_REGISTRY != '' && vars.AWS_ROLE_TO_ASSUME != ''
+    needs: [detect-changes, test-build]
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -95,38 +142,4 @@ jobs:
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push access
-        run: |
-          docker build -f apps/access/Dockerfile \
-            -t $ECR_REGISTRY/access:${{ github.sha }} \
-            -t $ECR_REGISTRY/access:latest \
-            .
-          docker push $ECR_REGISTRY/access:${{ github.sha }}
-          docker push $ECR_REGISTRY/access:latest
-
-      - name: Build and push worker
-        run: |
-          docker build -f apps/worker/Dockerfile \
-            -t $ECR_REGISTRY/worker:${{ github.sha }} \
-            -t $ECR_REGISTRY/worker:latest \
-            .
-          docker push $ECR_REGISTRY/worker:${{ github.sha }}
-          docker push $ECR_REGISTRY/worker:latest
-
-      - name: Build and push report
-        run: |
-          docker build -f apps/report/Dockerfile \
-            -t $ECR_REGISTRY/report:${{ github.sha }} \
-            -t $ECR_REGISTRY/report:latest \
-            .
-          docker push $ECR_REGISTRY/report:${{ github.sha }}
-          docker push $ECR_REGISTRY/report:latest
-
-      - name: Build and push db-migrate
-        run: |
-          docker build -f packages/db/Dockerfile.migrate \
-            -t $ECR_REGISTRY/db-migrate:${{ github.sha }} \
-            -t $ECR_REGISTRY/db-migrate:latest \
-            .
-          docker push $ECR_REGISTRY/db-migrate:${{ github.sha }}
-          docker push $ECR_REGISTRY/db-migrate:latest
+      - run: IMAGE_PREFIX="$ECR_REGISTRY" IMAGE_TAG="${{ github.sha }}" node scripts/workspace-build-image.mjs --images "${{ needs.detect-changes.outputs.images }}" --additional-tags latest --push

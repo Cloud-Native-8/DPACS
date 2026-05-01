@@ -1,30 +1,16 @@
 import { spawn } from "node:child_process";
+import { IMAGE_CONFIGS, resolveImages } from "./workspace-targets.mjs";
 
+const args = process.argv.slice(2);
+const imageArgIndex = args.indexOf("--images");
+const pushEnabled = args.includes("--push");
+const additionalTagsArgIndex = args.indexOf("--additional-tags");
 const imagePrefix = process.env.IMAGE_PREFIX ?? "dpacs";
 const imageTag = process.env.IMAGE_TAG ?? "local";
-
-const images = [
-  {
-    name: "access",
-    dockerfile: "apps/access/Dockerfile",
-    context: "."
-  },
-  {
-    name: "report",
-    dockerfile: "apps/report/Dockerfile",
-    context: "."
-  },
-  {
-    name: "worker",
-    dockerfile: "apps/worker/Dockerfile",
-    context: "."
-  },
-  {
-    name: "db-migrate",
-    dockerfile: "packages/db/Dockerfile.migrate",
-    context: "."
-  }
-];
+const additionalTags = additionalTagsArgIndex === -1
+  ? []
+  : args[additionalTagsArgIndex + 1].split(",").map((value) => value.trim()).filter(Boolean);
+const images = resolveImages(imageArgIndex === -1 ? "" : args[imageArgIndex + 1]);
 
 function run(command, args) {
   return new Promise((resolve, reject) => {
@@ -45,17 +31,23 @@ function run(command, args) {
   });
 }
 
-for (const image of images) {
-  const tag = `${imagePrefix}/${image.name}:${imageTag}`;
+for (const imageName of images) {
+  const image = IMAGE_CONFIGS[imageName];
+  const tags = [imageTag, ...additionalTags].map((tagName) => `${imagePrefix}/${imageName}:${tagName}`);
 
-  console.log(`\n==> Building ${tag}`);
+  console.log(`\n==> Building ${tags.join(", ")}`);
 
   await run("docker", [
     "build",
     "-f",
     image.dockerfile,
-    "-t",
-    tag,
+    ...tags.flatMap((tag) => ["-t", tag]),
     image.context
   ]);
+
+  if (pushEnabled) {
+    for (const tag of tags) {
+      await run("docker", ["push", tag]);
+    }
+  }
 }
