@@ -34,6 +34,14 @@ jobs:
             --head "${{ github.sha }}" \
             --github-output "$GITHUB_OUTPUT"
 
+      - name: Print detected targets
+        run: |
+          echo "mode=${{ steps.changed.outputs.mode }}"
+          echo "should_run=${{ steps.changed.outputs.should_run }}"
+          echo "packages=${{ steps.changed.outputs.packages }}"
+          echo "images=${{ steps.changed.outputs.images }}"
+          echo '${{ steps.changed.outputs.json }}'
+
   test-build:
     if: needs.detect-changes.outputs.should_run == 'true'
     needs: detect-changes
