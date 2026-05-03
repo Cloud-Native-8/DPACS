@@ -98,7 +98,7 @@ jobs:
       - run: node scripts/workspace-check.mjs --packages "${{ needs.detect-changes.outputs.packages }}"
 
   docker-build:
-    if: needs.detect-changes.outputs.images != '' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/dev')
+    if: needs.detect-changes.outputs.images != '' && github.event_name == 'pull_request' && (github.base_ref == 'dev' || github.base_ref == 'main')
     needs: [detect-changes, test-build]
     runs-on: ubuntu-latest
 
