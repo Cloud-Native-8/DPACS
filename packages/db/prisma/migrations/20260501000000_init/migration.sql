@@ -28,6 +28,7 @@ CREATE INDEX "access_events_occurred_at_idx" ON "access_events"("occurred_at" DE
 CREATE TABLE "department" (
   "department_id" bigint PRIMARY KEY,
   "department_name" varchar(100) NOT NULL,
+  "manager_id" bigint,
   "created_at" timestamp,
   "updated_at" timestamp
 );
@@ -104,6 +105,8 @@ ALTER TABLE "department_hierarchy" ADD FOREIGN KEY ("ancestor_department_id") RE
 ALTER TABLE "department_hierarchy" ADD FOREIGN KEY ("descendant_department_id") REFERENCES "department" ("department_id") DEFERRABLE INITIALLY IMMEDIATE;
 
 ALTER TABLE "employee" ADD FOREIGN KEY ("department_id") REFERENCES "department" ("department_id") DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE "department" ADD FOREIGN KEY ("manager_id") REFERENCES "employee" ("employee_id") DEFERRABLE INITIALLY IMMEDIATE;
 
 ALTER TABLE "access_point" ADD FOREIGN KEY ("site_id") REFERENCES "site" ("site_id") DEFERRABLE INITIALLY IMMEDIATE;
 

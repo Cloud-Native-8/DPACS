@@ -2,19 +2,26 @@
 BEGIN;
 SET CONSTRAINTS ALL DEFERRED;
 
-INSERT INTO "department" ("department_id", "department_name", "created_at", "updated_at")
+INSERT INTO "department" (
+  "department_id",
+  "department_name",
+  "manager_id",
+  "created_at",
+  "updated_at"
+)
 VALUES
-  (1, 'Company', '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
-  (2, 'Corporate Services', '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
-  (3, 'IT', '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
-  (4, 'Infrastructure', '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
-  (5, 'HR', '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
-  (6, 'Security Division', '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
-  (7, 'Physical Security', '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
-  (8, 'Manufacturing Division', '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
-  (9, 'Fab Operations', '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
-  (10, 'Clean Room Team', '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
-  (11, 'Quality Control', '2026-05-01T09:00:00', '2026-05-01T09:00:00');
+  (1, 'Company', 11, '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
+  (2, 'Corporate Services', 1, '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
+  (3, 'IT', 2, '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
+  (4, 'Infrastructure', 3, '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
+  (5, 'HR', 4, '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
+  (6, 'Security Division', 5, '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
+  (7, 'Physical Security', 6, '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
+  (8, 'Manufacturing Division', 7, '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
+  (9, 'Fab Operations', 8, '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
+  (10, 'Clean Room Team', 9, '2026-05-01T09:00:00', '2026-05-01T09:00:00'),
+  (11, 'Quality Control', 10, '2026-05-01T09:00:00', '2026-05-01T09:00:00');
+
 INSERT INTO "department_hierarchy" ("ancestor_department_id", "descendant_department_id", "depth")
 VALUES
   (1, 1, 0),
@@ -47,18 +54,30 @@ VALUES
   (1, 11, 2),
   (2, 4, 2),
   (8, 10, 2);
-INSERT INTO "employee" ("employee_id", "employee_name", "email", "phone", "job_title", "department_id", "is_active", "created_at", "updated_at")
+INSERT INTO "employee" (
+  "employee_id",
+  "employee_name",
+  "email",
+  "phone",
+  "job_title",
+  "department_id",
+  "is_active",
+  "created_at",
+  "updated_at"
+)
 VALUES
   (1, 'AliceLin', 'AliceLin@tsmc.tw', '7362', 'Corporate Services Director', 2, TRUE, '2026-05-01T09:10:00', '2026-05-01T09:10:00'),
   (2, 'BobChen', 'BobChen@tsmc.tw', '4234', 'IT Manager', 3, TRUE, '2026-05-01T09:15:00', '2026-05-01T09:15:00'),
-  (3, 'CandiceTsai', 'CandiceTsai@tsmc.tw', '1893', 'Infrastructure Engineer', 4, TRUE, '2026-05-01T09:20:00', '2026-05-01T09:20:00'),
-  (4, 'DavidLiu', 'DavidLiu@tsmc.tw', '2897', 'HR Specialist', 5, TRUE, '2026-05-01T09:25:00', '2026-05-01T09:25:00'),
+  (3, 'CandiceTsai', 'CandiceTsai@tsmc.tw', '1893', 'Infrastructure Manager', 4, TRUE, '2026-05-01T09:20:00', '2026-05-01T09:20:00'),
+  (4, 'DavidLiu', 'DavidLiu@tsmc.tw', '2897', 'HR Manager', 5, TRUE, '2026-05-01T09:25:00', '2026-05-01T09:25:00'),
   (5, 'EricWang', 'EricWang@tsmc.tw', '5521', 'Security Director', 6, TRUE, '2026-05-01T09:30:00', '2026-05-01T09:30:00'),
-  (6, 'FionaHsu', 'FionaHsu@tsmc.tw', '8842', 'Physical Security Engineer', 7, TRUE, '2026-05-01T09:35:00', '2026-05-01T09:35:00'),
-  (7, 'GraceHuang', 'GraceHuang@tsmc.tw', '6710', 'Manufacturing Director', 8, FALSE, '2026-05-01T09:40:00', '2026-05-01T09:40:00'),
+  (6, 'FionaHsu', 'FionaHsu@tsmc.tw', '8842', 'Physical Security Manager', 7, TRUE, '2026-05-01T09:35:00', '2026-05-01T09:35:00'),
+  (7, 'GraceHuang', 'GraceHuang@tsmc.tw', '6710', 'Manufacturing Director', 8, TRUE, '2026-05-01T09:40:00', '2026-05-01T09:40:00'),
   (8, 'HenryTseng', 'HenryTseng@tsmc.tw', '3358', 'Fab Operations Manager', 9, TRUE, '2026-05-01T09:45:00', '2026-05-01T09:45:00'),
-  (9, 'IvyWu', 'IvyWu@tsmc.tw', '9182', 'Clean Room Engineer', 10, TRUE, '2026-05-01T09:50:00', '2026-05-01T09:50:00'),
-  (10, 'JackyLee', 'JackyLee@tsmc.tw', '2471', 'Quality Engineer', 11, TRUE, '2026-05-01T09:55:00', '2026-05-01T09:55:00');
+  (9, 'IvyWu', 'IvyWu@tsmc.tw', '9182', 'Clean Room Manager', 10, TRUE, '2026-05-01T09:50:00', '2026-05-01T09:50:00'),
+  (10, 'JackyLee', 'JackyLee@tsmc.tw', '2471', 'Quality Control Manager', 11, TRUE, '2026-05-01T09:55:00', '2026-05-01T09:55:00'),
+  (11, 'KarenChang', 'KarenChang@tsmc.tw', '6108', 'Company General Manager', 1, TRUE, '2026-05-01T09:05:00', '2026-05-01T09:05:00');
+  
 INSERT INTO "site" ("site_id", "site_name", "site_address", "created_at", "updated_at")
 VALUES
   (1, 'Hsinchu Fab 12', 'No. 8, Li-Hsin Rd. 6, Hsinchu Science Park', '2026-05-01T10:00:00', '2026-05-01T10:00:00'),
