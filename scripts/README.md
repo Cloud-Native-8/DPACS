@@ -25,6 +25,8 @@
 
 作用是先讀 root `.env`，再把同一份環境變數帶進後續 `pnpm --filter ...` 指令。這樣每個 service 本地開發都能統一吃 root `.env`。
 
+例如 `pnpm db:reset` 會透過這層包裝去執行 `@repo/db` 的 `prisma migrate reset --force`。
+
 ### `workspace-build.mjs`
 
 給 `pnpm build:app` 用。

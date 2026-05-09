@@ -231,6 +231,12 @@ PostgreSQL 啟動後，執行：
 pnpm db:migrate
 ```
 
+如果要清空本地資料庫並重建 schema，可執行：
+
+```bash
+pnpm db:reset
+```
+
 ### 單獨啟動 service
 
 #### Access service
@@ -322,6 +328,7 @@ pnpm dev:report
 | `pnpm db:remove`   | 刪除 PostgreSQL container                                |
 | `pnpm db:logs`     | 查看 PostgreSQL logs                                     |
 | `pnpm db:migrate`  | 執行本地 database migrations                             |
+| `pnpm db:reset`    | 清空本地 database 並重新套用所有 migrations              |
 | `pnpm db:seed`     | 匯入 report/access mock CSV data                         |
 | `pnpm queue:setup` | 手動建立本地 SQS queues                                  |
 | `pnpm dev:access`  | 啟動 access service                                      |

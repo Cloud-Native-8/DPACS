@@ -9,6 +9,7 @@
   "scripts": {
     "generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
+    "migrate:reset": "prisma migrate reset --force",
     "migrate:deploy": "prisma migrate deploy",
     "studio": "prisma studio --browser none",
     "build": "node --check src/index.js && node --check src/client.js",
