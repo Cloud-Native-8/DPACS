@@ -17,6 +17,7 @@
     "local:down": "docker compose down",
     "db:generate": "node scripts/run-with-root-env.mjs pnpm --filter @repo/db generate",
     "db:migrate": "node scripts/run-with-root-env.mjs pnpm --filter @repo/db migrate:dev",
+    "db:reset": "node scripts/run-with-root-env.mjs pnpm --filter @repo/db migrate:reset",
     "db:migrate:deploy": "node scripts/run-with-root-env.mjs pnpm --filter @repo/db migrate:deploy",
     "db:studio": "node scripts/run-with-root-env.mjs pnpm --filter @repo/db studio",
     "build": "pnpm build:app",

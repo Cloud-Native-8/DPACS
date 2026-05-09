@@ -1,8 +1,9 @@
 import {
   DeleteMessageCommand,
+  GetQueueAttributesCommand,
   ReceiveMessageCommand,
   SendMessageCommand,
-  SQSClient
+  SQSClient,
 } from "@aws-sdk/client-sqs";
 import { randomUUID } from "node:crypto";
 
@@ -39,7 +40,7 @@ export function parseAccessRequest(payload = {}) {
     userId: normalizeString(payload.userId, "userId"),
     doorId: normalizeString(payload.doorId, "doorId"),
     factoryId: normalizeString(payload.factoryId, "factoryId"),
-    in: normalizeBoolean(payload.in, "in")
+    in: normalizeBoolean(payload.in, "in"),
   };
 }
 
@@ -53,7 +54,7 @@ export function createAccessCheckedEvent(request, result) {
     factoryId: request.factoryId,
     in: request.in,
     pass: result.pass,
-    reason: result.reason
+    reason: result.reason,
   };
 }
 
@@ -69,7 +70,7 @@ export function parseAccessEvent(body) {
     factoryId: normalizeString(event.factoryId, "factoryId"),
     in: normalizeBoolean(event.in, "in"),
     pass: normalizeBoolean(event.pass, "pass"),
-    reason: normalizeString(event.reason, "reason")
+    reason: normalizeString(event.reason, "reason"),
   };
 }
 
@@ -85,14 +86,14 @@ export function createSqsClient() {
       accessKeyId && secretAccessKey
         ? {
             accessKeyId,
-            secretAccessKey
+            secretAccessKey,
           }
         : endpoint
           ? {
               accessKeyId: "test",
-              secretAccessKey: "test"
+              secretAccessKey: "test",
             }
-          : undefined
+          : undefined,
   });
 }
 
@@ -110,8 +111,8 @@ export async function sendAccessEvent(event) {
   await getSqsClient().send(
     new SendMessageCommand({
       QueueUrl: required("SQS_QUEUE_URL"),
-      MessageBody: JSON.stringify(parseAccessEvent(event))
-    })
+      MessageBody: JSON.stringify(parseAccessEvent(event)),
+    }),
   );
 }
 
@@ -121,8 +122,9 @@ export async function receiveAccessEvents(maxMessages = 10) {
       QueueUrl: required("SQS_QUEUE_URL"),
       MaxNumberOfMessages: maxMessages,
       WaitTimeSeconds: 20,
-      VisibilityTimeout: 60
-    })
+      VisibilityTimeout: 60,
+      AttributeNames: ["ApproximateReceiveCount", "SentTimestamp"],
+    }),
   );
 
   return result.Messages || [];
@@ -132,7 +134,23 @@ export async function deleteAccessEvent(receiptHandle) {
   await getSqsClient().send(
     new DeleteMessageCommand({
       QueueUrl: required("SQS_QUEUE_URL"),
-      ReceiptHandle: receiptHandle
-    })
+      ReceiptHandle: receiptHandle,
+    }),
   );
+}
+
+export async function verifyQueueConnection() {
+  const queueUrl = required("SQS_QUEUE_URL");
+
+  const result = await getSqsClient().send(
+    new GetQueueAttributesCommand({
+      QueueUrl: queueUrl,
+      AttributeNames: ["QueueArn"],
+    }),
+  );
+
+  return {
+    queueUrl,
+    queueArn: result.Attributes?.QueueArn || "",
+  };
 }

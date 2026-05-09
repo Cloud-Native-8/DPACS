@@ -23,6 +23,12 @@ pnpm db:generate
 pnpm db:migrate
 ```
 
+本地重置資料庫並重新套用所有 migration：
+
+```bash
+pnpm db:reset
+```
+
 部署既有 migration：
 
 ```bash
