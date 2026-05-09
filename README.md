@@ -144,6 +144,7 @@ cp .env.example .env
 
 pnpm local:up
 pnpm db:migrate
+pnpm db:seed
 ```
 
 Windows PowerShell 請使用：
@@ -321,6 +322,7 @@ pnpm dev:report
 | `pnpm db:remove`   | 刪除 PostgreSQL container                                |
 | `pnpm db:logs`     | 查看 PostgreSQL logs                                     |
 | `pnpm db:migrate`  | 執行本地 database migrations                             |
+| `pnpm db:seed`     | 匯入 report/access mock CSV data                         |
 | `pnpm queue:setup` | 手動建立本地 SQS queues                                  |
 | `pnpm dev:access`  | 啟動 access service                                      |
 | `pnpm dev:worker`  | 啟動 worker service                                      |

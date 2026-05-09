@@ -1,30 +1,40 @@
-import { prisma } from "@repo/db/client";
-
-function startOfToday() {
+export function startOfToday() {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-function formatDirection(isEntry) {
-  return isEntry ? "ENTER" : "EXIT";
+export function formatDirection(direction) {
+  return String(direction).toUpperCase() === "OUT" ? "EXIT" : "ENTER";
 }
 
-function formatDecision(passed) {
-  return passed ? "ALLOW" : "DENY";
+export function formatDecision(result) {
+  return String(result).toUpperCase() === "DENY" ? "DENY" : "ALLOW";
 }
 
-function formatEventRow(event) {
+export function formatEventRow(log) {
+  const decision = formatDecision(log.result);
+  const direction = formatDirection(log.direction);
+  const employeeId = Number(log.employeeId);
+  const accessPointId = Number(log.accessPointId);
+  const siteId = Number(log.siteId);
+
   return {
-    eventId: event.eventId,
-    userId: event.userId,
-    doorId: event.doorId,
-    factoryId: event.factoryId,
-    direction: formatDirection(event.in),
-    decision: formatDecision(event.pass),
-    in: event.in,
-    pass: event.pass,
-    occurredAt: event.occurredAt.toISOString(),
-    time: event.occurredAt.toLocaleTimeString("en-US", {
+    eventId: String(log.logId),
+    logId: Number(log.logId),
+    employeeId,
+    userId: log.employee?.employeeName ?? `Employee ${employeeId}`,
+    doorId: log.accessPoint?.accessPointName ?? `Access point ${accessPointId}`,
+    factoryId: log.site?.siteName ?? `Site ${siteId}`,
+    accessPointId,
+    siteId,
+    direction,
+    decision,
+    in: String(log.direction).toUpperCase() === "IN",
+    pass: String(log.result).toUpperCase() === "ACCEPT",
+    reason: log.reason,
+    note: log.note,
+    occurredAt: log.eventTime.toISOString(),
+    time: log.eventTime.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false
@@ -32,52 +42,14 @@ function formatEventRow(event) {
   };
 }
 
-export async function getReportData() {
-  const today = startOfToday();
-
-  const [checkedInToday, deniedToday, recentEvents, activeEmployeeRows] = await Promise.all([
-    prisma.accessEvent.count({
-      where: {
-        occurredAt: {
-          gte: today
-        },
-        pass: true,
-        in: true
-      }
-    }),
-    prisma.accessEvent.count({
-      where: {
-        occurredAt: {
-          gte: today
-        },
-        pass: false
-      }
-    }),
-    prisma.accessEvent.findMany({
-      orderBy: {
-        occurredAt: "desc"
-      },
-      take: 20
-    }),
-    prisma.accessEvent.findMany({
-      where: {
-        pass: true,
-        in: true
-      },
-      distinct: ["userId"],
-      select: {
-        userId: true
-      }
-    })
-  ]);
-
+export function buildReportData({ activeEmployees, checkedInToday, deniedToday, recentLogs }) {
   return {
     generatedAt: new Date().toISOString(),
     summary: {
-      activeEmployees: activeEmployeeRows.length,
+      activeEmployees,
       checkedInToday,
       pendingReviews: deniedToday
     },
-    recentEvents: recentEvents.map(formatEventRow)
+    recentEvents: recentLogs.map(formatEventRow)
   };
 }

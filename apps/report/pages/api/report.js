@@ -1,4 +1,4 @@
-import { getReportData } from "../../src/lib/report-data.js";
+import { getReportData } from "../../src/server/report-service.js";
 
 export default async function handler(_req, res) {
   try {
