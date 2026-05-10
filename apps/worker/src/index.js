@@ -17,19 +17,28 @@ process.on("SIGINT", () => {
 });
 
 async function persistAccessEvent(event) {
+  const accessLogData = {
+    logId: BigInt(Date.now()),
+    employeeId: BigInt(event.employee_id),
+    siteId: BigInt(event.site_id),
+    accessPointId: BigInt(event.access_point_id),
+    direction: event.direction === "in" ? "In" : "Out",
+    result: event.result ? "Accept" : "Deny",
+    status: event.result ? null : false,
+    reason: event.reason,
+    eventTime: new Date(event.occurredAt),
+    note: `Queue event ${event.eventId}`,
+    createdAt: new Date(),
+  };
+
+  console.log("worker received event", event);
+  console.log("worker writing accessLog", {
+    ...accessLogData,
+    logId: accessLogData.logId.toString(),
+  });
+
   await prisma.accessLog.create({
-    data: {
-      logId: BigInt(Date.now()),
-      employeeId: BigInt(event.employee_id),
-      siteId: BigInt(event.site_id),
-      accessPointId: BigInt(event.access_point_id),
-      direction: event.direction === "in" ? "In" : "Out",
-      result: event.result ? "Accept" : "Deny",
-      reason: event.reason,
-      eventTime: new Date(event.occurredAt),
-      note: `Queue event ${event.eventId}`,
-      createdAt: new Date(),
-    },
+    data: accessLogData,
   });
 }
 

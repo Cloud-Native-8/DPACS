@@ -45,6 +45,7 @@ CREATE TABLE "employee" (
   "employee_name" varchar(100) NOT NULL,
   "email" varchar(255) UNIQUE NOT NULL,
   "phone" varchar(15),
+  "password" varchar(20) NOT NULL,
   "job_title" varchar(100),
   "department_id" bigint NOT NULL,
   "is_active" boolean NOT NULL DEFAULT true,
@@ -88,6 +89,7 @@ CREATE TABLE "access_log" (
   "access_point_id" bigint NOT NULL,
   "direction" varchar(10) NOT NULL,
   "result" varchar(10) NOT NULL,
+  "status" boolean,
   "reason" text,
   "event_time" timestamp NOT NULL,
   "note" text,
@@ -99,6 +101,8 @@ COMMENT ON COLUMN "department_hierarchy"."depth" IS '0 = itself, 1 = direct chil
 COMMENT ON COLUMN "access_log"."direction" IS 'Allowed values: In, Out';
 
 COMMENT ON COLUMN "access_log"."result" IS 'Allowed values: Accept, Deny';
+
+COMMENT ON COLUMN "access_log"."status" IS 'NULL = normal access, false = denied and pending report handling, true = report handled';
 
 ALTER TABLE "department_hierarchy" ADD FOREIGN KEY ("ancestor_department_id") REFERENCES "department" ("department_id") DEFERRABLE INITIALLY IMMEDIATE;
 
