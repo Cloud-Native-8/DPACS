@@ -26,7 +26,7 @@ spec:
             - sh
             - -c
           args:
-            - cd /repo/packages/db && pnpm prisma studio --browser none --port 5555
+            - cd /repo/packages/db && pnpm prisma studio --browser none --port 5555 --url "$DATABASE_URL"
 ---
 apiVersion: v1
 kind: Service

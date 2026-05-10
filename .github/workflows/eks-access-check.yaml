@@ -1,0 +1,68 @@
+name: eks-access-check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+
+jobs:
+  check-eks-access:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+
+      - name: Show AWS identity
+        run: |
+          aws sts get-caller-identity
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region "$AWS_REGION" \
+            --name "$EKS_CLUSTER_NAME"
+
+      - name: Check Kubernetes permissions
+        run: |
+          echo "== can-i checks =="
+          kubectl auth can-i get pods -n test
+          kubectl auth can-i list pods -n test
+          kubectl auth can-i create jobs -n test
+          kubectl auth can-i delete jobs -n test
+          kubectl auth can-i create deployments -n test
+          kubectl auth can-i patch deployments -n test
+          kubectl auth can-i get services -n test
+          kubectl auth can-i create services -n test
+          kubectl auth can-i get configmaps -n test
+          kubectl auth can-i create configmaps -n test
+          kubectl auth can-i get serviceaccounts -n test
+          kubectl auth can-i create serviceaccounts -n test
+
+      - name: Get cluster status
+        run: |
+          echo "== namespaces =="
+          kubectl get ns
+
+          echo "== test namespace resources =="
+          kubectl -n test get all
+
+      - name: Dry-run apply manifests
+        run: |
+          echo "== dry-run apply =="
+          kubectl apply -f deploy/k8s/test/00-namespace.yaml --dry-run=server
+          kubectl apply -f deploy/k8s/test/01-configmap.yaml --dry-run=server
+          kubectl apply -f deploy/k8s/test/03-serviceaccounts.yaml --dry-run=server
+          kubectl apply -f deploy/k8s/test/04-access.yaml --dry-run=server
+          kubectl apply -f deploy/k8s/test/05-migrate-job.yaml --dry-run=server
+          kubectl apply -f deploy/k8s/test/06-worker.yaml --dry-run=server
+          kubectl apply -f deploy/k8s/test/07-report.yaml --dry-run=server
