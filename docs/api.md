@@ -210,4 +210,4 @@ Device event submission is not implemented in `apps/report`; access decision eve
 - `pnpm local:up`: 啟動 PostgreSQL、Valkey、LocalStack
 - `pnpm db:migrate`: 執行 Prisma migrations
 - `pnpm db:reset`: 清空本地 PostgreSQL 並重新套用所有 Prisma migrations
-- seed 目前可用 Docker 內的 `psql` 匯入：`docker compose exec -T postgres psql -U postgres -d app < packages/db/seed/data0506.sql`
+- `pnpm db:seed`: 匯入 `packages/db/seed/` 內所有 `.sql` seed 檔

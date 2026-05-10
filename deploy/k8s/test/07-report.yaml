@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: report
+  namespace: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: report
+  template:
+    metadata:
+      labels:
+        app: report
+    spec:
+      containers:
+        - name: report
+          image: 390402574827.dkr.ecr.ap-northeast-1.amazonaws.com/dpacs/report:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+
+            - name: HOSTNAME
+              value: "0.0.0.0"
+
+            - name: PORT
+              value: "3000"
+
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: report-env
+                  key: DATABASE_URL
+
+            - name: DB_CONNECTION_TIMEOUT_MS
+              value: "30000"
+
+            - name: DB_IDLE_TIMEOUT_MS
+              value: "30000"
+
+            - name: DB_POOL_MAX
+              value: "5"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: report
+  namespace: test
+spec:
+  type: ClusterIP
+  selector:
+    app: report
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000

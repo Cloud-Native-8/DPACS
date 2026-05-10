@@ -19,6 +19,7 @@
     "db:migrate": "node scripts/run-with-root-env.mjs pnpm --filter @repo/db migrate:dev",
     "db:reset": "node scripts/run-with-root-env.mjs pnpm --filter @repo/db migrate:reset",
     "db:migrate:deploy": "node scripts/run-with-root-env.mjs pnpm --filter @repo/db migrate:deploy",
+    "db:seed": "bash ./scripts/db-seed.sh",
     "db:studio": "node scripts/run-with-root-env.mjs pnpm --filter @repo/db studio",
     "build": "pnpm build:app",
     "build:app": "node scripts/workspace-build.mjs",
