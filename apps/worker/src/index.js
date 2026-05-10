@@ -17,21 +17,18 @@ process.on("SIGINT", () => {
 });
 
 async function persistAccessEvent(event) {
-  await prisma.accessEvent.upsert({
-    where: {
-      eventId: event.eventId,
-    },
-    update: {},
-    create: {
-      eventId: event.eventId,
-      userId: event.userId,
-      doorId: event.doorId,
-      factoryId: event.factoryId,
-      in: event.in,
-      pass: event.pass,
+  await prisma.accessLog.create({
+    data: {
+      logId: BigInt(Date.now()),
+      employeeId: BigInt(event.employee_id),
+      siteId: BigInt(event.site_id),
+      accessPointId: BigInt(event.access_point_id),
+      direction: event.direction === "in" ? "In" : "Out",
+      result: event.result ? "Accept" : "Deny",
       reason: event.reason,
-      occurredAt: new Date(event.occurredAt),
-      payload: event,
+      eventTime: new Date(event.occurredAt),
+      note: `Queue event ${event.eventId}`,
+      createdAt: new Date(),
     },
   });
 }
