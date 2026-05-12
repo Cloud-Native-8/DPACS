@@ -3,6 +3,9 @@ kind: Deployment
 metadata:
   name: report
   namespace: test
+  annotations:
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/success-codes: "200-399"
 spec:
   replicas: 1
   selector:
