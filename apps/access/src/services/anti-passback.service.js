@@ -1,7 +1,7 @@
 import { getValkeyClient } from "../clients/valkey.client.js";
 
-function buildKey(userId) {
-  return `anti-passback:${userId}`;
+function buildKey(employee_id) {
+  return `anti-passback:${employee_id}`;
 }
 
 function parseState(rawState) {
@@ -16,9 +16,9 @@ function parseState(rawState) {
   }
 }
 
-export async function getLastAccessState(userId) {
+export async function getLastAccessState(employee_id) {
   const client = await getValkeyClient();
-  const rawState = await client.get(buildKey(userId));
+  const rawState = await client.get(buildKey(employee_id));
 
   return {
     backend: "valkey",
@@ -26,13 +26,13 @@ export async function getLastAccessState(userId) {
   };
 }
 
-export async function rememberAccessState(userId, state) {
+export async function rememberAccessState(employee_id, state) {
   const client = await getValkeyClient();
   const ttl = Number(process.env.ANTI_PASSBACK_TTL_SECONDS || 43200);
-  await client.set(buildKey(userId), JSON.stringify(state), { EX: ttl });
+  await client.set(buildKey(employee_id), JSON.stringify(state), { EX: ttl });
 }
 
-export async function clearLastAccessState(userId) {
+export async function clearLastAccessState(employee_id) {
   const client = await getValkeyClient();
-  await client.del(buildKey(userId));
+  await client.del(buildKey(employee_id));
 }

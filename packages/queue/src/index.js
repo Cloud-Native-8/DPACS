@@ -35,12 +35,22 @@ function normalizeBoolean(value, fieldName) {
   return value;
 }
 
+function normalizeDirection(value, fieldName) {
+  const normalized = String(value || "").trim().toLowerCase();
+
+  if (!["in", "out"].includes(normalized)) {
+    throw new Error(`${fieldName} must be either in or out`);
+  }
+
+  return normalized;
+}
+
 export function parseAccessRequest(payload = {}) {
   return {
-    userId: normalizeString(payload.userId, "userId"),
-    doorId: normalizeString(payload.doorId, "doorId"),
-    factoryId: normalizeString(payload.factoryId, "factoryId"),
-    in: normalizeBoolean(payload.in, "in"),
+    employee_id: normalizeString(payload.employee_id, "employee_id"),
+    access_point_id: normalizeString(payload.access_point_id, "access_point_id"),
+    site_id: normalizeString(payload.site_id, "site_id"),
+    direction: normalizeDirection(payload.direction, "direction"),
   };
 }
 
@@ -49,11 +59,11 @@ export function createAccessCheckedEvent(request, result) {
     eventId: randomUUID(),
     eventType: "access.checked",
     occurredAt: result.processedAt,
-    userId: request.userId,
-    doorId: request.doorId,
-    factoryId: request.factoryId,
-    in: request.in,
-    pass: result.pass,
+    employee_id: request.employee_id,
+    access_point_id: request.access_point_id,
+    site_id: request.site_id,
+    direction: request.direction,
+    result: result.result,
     reason: result.reason,
   };
 }
@@ -65,11 +75,11 @@ export function parseAccessEvent(body) {
     eventId: normalizeString(event.eventId, "eventId"),
     eventType: normalizeString(event.eventType, "eventType"),
     occurredAt: normalizeString(event.occurredAt, "occurredAt"),
-    userId: normalizeString(event.userId, "userId"),
-    doorId: normalizeString(event.doorId, "doorId"),
-    factoryId: normalizeString(event.factoryId, "factoryId"),
-    in: normalizeBoolean(event.in, "in"),
-    pass: normalizeBoolean(event.pass, "pass"),
+    employee_id: normalizeString(event.employee_id, "employee_id"),
+    access_point_id: normalizeString(event.access_point_id, "access_point_id"),
+    site_id: normalizeString(event.site_id, "site_id"),
+    direction: normalizeDirection(event.direction, "direction"),
+    result: normalizeBoolean(event.result, "result"),
     reason: normalizeString(event.reason, "reason"),
   };
 }
@@ -108,6 +118,7 @@ function getSqsClient() {
 }
 
 export async function sendAccessEvent(event) {
+  console.log("access checked event", event);
   await getSqsClient().send(
     new SendMessageCommand({
       QueueUrl: required("SQS_QUEUE_URL"),
