@@ -3,46 +3,37 @@ export const ALL_PACKAGES = [
   "@repo/report",
   "@repo/worker",
   "@repo/db",
-  "@repo/queue"
+  "@repo/queue",
 ];
 
-export const ALL_IMAGES = [
-  "access",
-  "report",
-  "worker",
-  "db-migrate"
-];
+export const ALL_IMAGES = ["access", "report", "worker", "db-migrate"];
 
 export const IMAGE_CONFIGS = {
   access: {
     dockerfile: "apps/access/Dockerfile",
-    context: "."
+    context: ".",
   },
   report: {
     dockerfile: "apps/report/Dockerfile",
-    context: "."
+    context: ".",
   },
   worker: {
     dockerfile: "apps/worker/Dockerfile",
-    context: "."
+    context: ".",
   },
   "db-migrate": {
     dockerfile: "packages/db/Dockerfile.migrate",
-    context: "."
-  }
+    context: ".",
+  },
 };
 
-const FULL_REBUILD_PREFIXES = [
-  "scripts/",
-  ".github/workflows/",
-  "deploy/"
-];
+const FULL_REBUILD_PREFIXES = ["scripts/", ".github/workflows/"];
 
 const FULL_REBUILD_FILES = new Set([
   ".dockerignore",
   "package.json",
   "pnpm-lock.yaml",
-  "pnpm-workspace.yaml"
+  "pnpm-workspace.yaml",
 ]);
 
 function addAll(set, values) {
@@ -82,11 +73,10 @@ export function resolveImages(csv) {
 }
 
 export function needsDbGenerate(packages) {
-  return packages.some((pkg) => (
-    pkg === "@repo/db" ||
-    pkg === "@repo/report" ||
-    pkg === "@repo/worker"
-  ));
+  return packages.some(
+    (pkg) =>
+      pkg === "@repo/db" || pkg === "@repo/report" || pkg === "@repo/worker",
+  );
 }
 
 export function analyzeChangedFiles(files) {
@@ -102,14 +92,17 @@ export function analyzeChangedFiles(files) {
       continue;
     }
 
-    if (FULL_REBUILD_FILES.has(file) || hasPrefix(file, FULL_REBUILD_PREFIXES)) {
+    if (
+      FULL_REBUILD_FILES.has(file) ||
+      hasPrefix(file, FULL_REBUILD_PREFIXES)
+    ) {
       reasons.push(file);
       return {
         mode: "full",
         shouldRun: true,
         packages: [...ALL_PACKAGES],
         images: [...ALL_IMAGES],
-        reasons
+        reasons,
       };
     }
 
@@ -154,7 +147,7 @@ export function analyzeChangedFiles(files) {
       shouldRun: true,
       packages: [...ALL_PACKAGES],
       images: [...ALL_IMAGES],
-      reasons
+      reasons,
     };
   }
 
@@ -164,7 +157,7 @@ export function analyzeChangedFiles(files) {
       shouldRun: false,
       packages: [],
       images: [],
-      reasons: ignored
+      reasons: ignored,
     };
   }
 
@@ -173,6 +166,6 @@ export function analyzeChangedFiles(files) {
     shouldRun: true,
     packages: [...packages],
     images: [...images],
-    reasons: ignored
+    reasons: ignored,
   };
 }

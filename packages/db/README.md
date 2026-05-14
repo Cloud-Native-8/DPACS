@@ -29,6 +29,18 @@ pnpm db:migrate
 pnpm db:reset
 ```
 
+匯入 `packages/db/seed/` 內的 seed SQL：
+
+```bash
+pnpm db:seed
+```
+
+指定單一 seed 檔：
+
+```bash
+pnpm db:seed packages/db/seed/data0506.sql
+```
+
 部署既有 migration：
 
 ```bash

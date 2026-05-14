@@ -237,6 +237,18 @@ pnpm db:migrate
 pnpm db:reset
 ```
 
+如果要匯入 `packages/db/seed/` 內的 seed SQL，可執行：
+
+```bash
+pnpm db:seed
+```
+
+如果要指定單一 seed 檔：
+
+```bash
+pnpm db:seed packages/db/seed/data0506.sql
+```
+
 ### 單獨啟動 service
 
 #### Access service
@@ -329,7 +341,7 @@ pnpm dev:report
 | `pnpm db:logs`     | 查看 PostgreSQL logs                                     |
 | `pnpm db:migrate`  | 執行本地 database migrations                             |
 | `pnpm db:reset`    | 清空本地 database 並重新套用所有 migrations              |
-| `pnpm db:seed`     | 匯入 report/access mock CSV data                         |
+| `pnpm db:seed`     | 匯入 `packages/db/seed/` 內所有 `.sql` seed 檔          |
 | `pnpm queue:setup` | 手動建立本地 SQS queues                                  |
 | `pnpm dev:access`  | 啟動 access service                                      |
 | `pnpm dev:worker`  | 啟動 worker service                                      |

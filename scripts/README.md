@@ -14,6 +14,18 @@
 2. 等 `localstack` ready
 3. 呼叫 [packages/queue/scripts/setup-local.sh](/Users/slowpoke/Documents/雲原生/cloud-native-8/packages/queue/scripts/setup-local.sh) 建立本地 queue
 
+### `db-seed.sh`
+
+給 `pnpm db:seed` 用。
+
+它會把 [packages/db/seed](/Users/slowpoke/Documents/雲原生/cloud-native-8/packages/db/seed) 內所有 `.sql` 檔依檔名排序後，透過 `psql` 匯入本地 `postgres` container 的 `app` database。
+
+也支援指定單一 seed 檔：
+
+```bash
+pnpm db:seed packages/db/seed/data0506.sql
+```
+
 ### `run-with-root-env.mjs`
 
 給這類指令共用：

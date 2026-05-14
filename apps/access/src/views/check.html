@@ -110,6 +110,12 @@
       const form = document.getElementById("check-form");
       const result = document.getElementById("result");
 
+      const ACCESS_BASE_PATH =
+        window.location.pathname === "/access" ||
+        window.location.pathname.startsWith("/access/")
+          ? "/access"
+          : "";
+
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
 
@@ -124,12 +130,12 @@
         result.textContent = "Loading...";
 
         try {
-          const response = await fetch("/check", {
+          const response = await fetch(`${ACCESS_BASE_PATH}/check`, {
             method: "POST",
             headers: {
-              "content-type": "application/json"
+              "content-type": "application/json",
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
           });
 
           const json = await response.json();
