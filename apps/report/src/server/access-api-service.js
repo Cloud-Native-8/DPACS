@@ -53,6 +53,16 @@ function scopedEmployeeIdWhere(scope, requestedEmployeeId) {
   };
 }
 
+function scopedDepartmentIds(query, scope) {
+  const departmentId = toBigInt(query.departmentId ?? query.department_id);
+
+  if (!departmentId) {
+    return scope.departmentIds;
+  }
+
+  return scope.departmentIds.filter((visibleDepartmentId) => visibleDepartmentId === departmentId);
+}
+
 function toText(value) {
   if (value === undefined || value === null) {
     return undefined;
@@ -139,8 +149,12 @@ function formatDate(date) {
   return `${year}-${month}-${day}`;
 }
 
+function formatEventDate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
 function sameDay(a, b) {
-  return formatDate(a) === formatDate(b);
+  return formatEventDate(a) === formatDate(b);
 }
 
 function normalizeReason(reason) {
@@ -228,6 +242,8 @@ function formatAccessPoint(accessPoint) {
 }
 
 function formatAccessLog(log) {
+  const result = String(log.result).toUpperCase() === "DENY" ? "DENY" : "ACCEPT";
+
   return {
     logId: toNumber(log.logId),
     employeeId: toNumber(log.employeeId),
@@ -237,7 +253,8 @@ function formatAccessLog(log) {
     accessPointId: toNumber(log.accessPointId),
     accessPointName: log.accessPoint?.accessPointName,
     direction: String(log.direction).toUpperCase() === "OUT" ? "OUT" : "IN",
-    result: String(log.result).toUpperCase() === "DENY" ? "DENY" : "ACCEPT",
+    result,
+    ...(result === "DENY" ? { status: Boolean(log.status) } : {}),
     reason: normalizeReason(log.reason),
     eventTime: log.eventTime.toISOString(),
     note: log.note,
@@ -429,18 +446,14 @@ async function listDepartments(scope) {
 
 async function listEmployees(query, scope) {
   const keyword = toText(query.keyword);
-  const departmentId = toBigInt(query.departmentId);
   const jobLevelId = toInt(query.jobLevelId);
-  const scopedDepartmentIds = departmentId
-    ? scope.departmentIds.filter((visibleDepartmentId) => visibleDepartmentId === departmentId)
-    : scope.departmentIds;
   const employees = await prisma.employee.findMany({
     where: {
       employeeId: {
         in: scope.employeeIds
       },
       departmentId: {
-        in: scopedDepartmentIds
+        in: scopedDepartmentIds(query, scope)
       },
       ...employeeKeywordWhere(keyword)
     },
@@ -652,7 +665,8 @@ async function getAttendanceSummary(query, scope) {
     isComplete: incompleteDates.length === 0,
     message: incompleteDates.length === 0 ? "Complete" : "結果不完整",
     incompleteDates,
-    deniedAccessLogCount
+    deniedAccessLogCount,
+    accessLogs: logs.map(formatAccessLog)
   };
 }
 
@@ -744,7 +758,7 @@ async function getDeniedAccessLogDetail(logId, scope) {
 
   ensureVisibleEmployee(scope, deniedAccessLog.employeeId);
 
-  const dayStart = startOfDay(deniedAccessLog.eventTime);
+  const dayStart = startOfDay(parseDate(formatEventDate(deniedAccessLog.eventTime), deniedAccessLog.eventTime));
   const dayEnd = new Date(dayStart.getTime() + DAY_MS);
   const dailyAccessSequence = await getEmployeeLogs(deniedAccessLog.employeeId, dayStart, dayEnd);
 
@@ -891,11 +905,14 @@ async function getMonthlyAttendanceReport(employeeId, query, scope) {
   };
 }
 
-async function allDailyWorkRecords(start, end, scope) {
+async function allDailyWorkRecords(start, end, scope, options = {}) {
   const employees = await prisma.employee.findMany({
     where: {
       employeeId: {
         in: scope.employeeIds
+      },
+      departmentId: {
+        in: options.departmentIds ?? scope.departmentIds
       },
       isActive: true
     },
@@ -903,18 +920,24 @@ async function allDailyWorkRecords(start, end, scope) {
       employeeId: "asc"
     }
   });
-  const logs = await prisma.accessLog.findMany({
-    where: {
-      eventTime: {
-        gte: start,
-        lt: end
+  const employeeIds = employees.map((employee) => employee.employeeId);
+  const logs = employeeIds.length
+    ? await prisma.accessLog.findMany({
+      where: {
+        employeeId: {
+          in: employeeIds
+        },
+        eventTime: {
+          gte: start,
+          lt: end
+        }
+      },
+      include: accessLogInclude(),
+      orderBy: {
+        eventTime: "asc"
       }
-    },
-    include: accessLogInclude(),
-    orderBy: {
-      eventTime: "asc"
-    }
-  });
+    })
+    : [];
 
   return employees.map((employee) => {
     const employeeLogs = logs.filter((log) => log.employeeId === employee.employeeId);
@@ -935,7 +958,9 @@ async function getTeamMonthlyStatistics(query, scope) {
   }
 
   const { start, end } = monthRange(yearMonth);
-  const recordsByEmployee = await allDailyWorkRecords(start, end, scope);
+  const recordsByEmployee = await allDailyWorkRecords(start, end, scope, {
+    departmentIds: scopedDepartmentIds(query, scope)
+  });
   const activeRecords = recordsByEmployee.flatMap((item) =>
     item.dailyRecords.filter((record) => record.accessEvents.length > 0)
   );
@@ -952,7 +977,7 @@ async function getTeamMonthlyStatistics(query, scope) {
     .map((log) => new Date(log.eventTime));
   const averageTime = (dates) => {
     if (!dates.length) return null;
-    const minutes = dates.reduce((sum, date) => sum + date.getHours() * 60 + date.getMinutes(), 0) / dates.length;
+    const minutes = dates.reduce((sum, date) => sum + date.getUTCHours() * 60 + date.getUTCMinutes(), 0) / dates.length;
     const hour = String(Math.floor(minutes / 60)).padStart(2, "0");
     const minute = String(Math.round(minutes % 60)).padStart(2, "0");
     return `${hour}:${minute}`;
@@ -985,8 +1010,11 @@ async function getTeamWorkloadTrend(query, scope) {
     }));
 
   const data = [];
+  const departmentIds = scopedDepartmentIds(query, scope);
   for (const period of periods) {
-    const recordsByEmployee = await allDailyWorkRecords(period.start, period.end, scope);
+    const recordsByEmployee = await allDailyWorkRecords(period.start, period.end, scope, {
+      departmentIds
+    });
     const records = recordsByEmployee.flatMap((item) =>
       item.dailyRecords.filter((record) => record.accessEvents.length > 0)
     );
@@ -1011,7 +1039,9 @@ async function getStayHourDistribution(query, scope) {
   }
 
   const { start, end } = monthRange(yearMonth);
-  const recordsByEmployee = await allDailyWorkRecords(start, end, scope);
+  const recordsByEmployee = await allDailyWorkRecords(start, end, scope, {
+    departmentIds: scopedDepartmentIds(query, scope)
+  });
   const employeeCount = recordsByEmployee.length;
   const dailyAverages = [];
 
