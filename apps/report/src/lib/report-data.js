@@ -1,6 +1,6 @@
 export function startOfToday() {
   const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
 export function formatDirection(direction) {
@@ -9,6 +9,13 @@ export function formatDirection(direction) {
 
 export function formatDecision(result) {
   return String(result).toUpperCase() === "DENY" ? "DENY" : "ALLOW";
+}
+
+function formatEventTime(date) {
+  return `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(
+    2,
+    "0"
+  )}`;
 }
 
 export function formatEventRow(log) {
@@ -34,11 +41,7 @@ export function formatEventRow(log) {
     reason: log.reason,
     note: log.note,
     occurredAt: log.eventTime.toISOString(),
-    time: log.eventTime.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false
-    })
+    time: formatEventTime(log.eventTime)
   };
 }
 

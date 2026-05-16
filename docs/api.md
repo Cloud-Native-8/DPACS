@@ -175,11 +175,23 @@ The report service validates HS256 tokens with `JWT_SECRET` and reads the curren
 - `GET /api/manager/reports/denied-access-logs`
 - `GET /api/manager/reports/denied-access-logs/:logId`
 - `PATCH /api/manager/access-logs/:logId/note`
+- `PATCH /api/manager/access-logs/:logId/status`
 
 Denied access log responses include `status` when `result` is `DENY`:
 
 - `status: false`: denied log is pending report handling
 - `status: true`: denied log has been handled
+
+Update denied access log handling status:
+
+```http
+PATCH /api/manager/access-logs/:logId/status
+Content-Type: application/json
+
+{
+  "status": true
+}
+```
 
 `/api/manager/reports/team/workload-trend`, `/api/manager/reports/team/monthly-statistics`, and `/api/manager/reports/team/stay-hour-distribution` support optional department filtering:
 
