@@ -2,8 +2,6 @@ import { prisma } from "@repo/db/client";
 import { ApiError } from "./access-api-service.js";
 import { requireAuth, signJwt } from "./jwt-auth.js";
 
-const LOCAL_DEMO_PASSWORD = "password123";
-
 function toNumber(value) {
   return value === null || value === undefined ? null : Number(value);
 }
@@ -96,13 +94,13 @@ async function findActiveEmployeeById(employeeId) {
 }
 
 export async function loginEmployee({ username, password }) {
-  if (!username || password !== LOCAL_DEMO_PASSWORD) {
+  if (!username || !password) {
     throw new ApiError(401, "UNAUTHORIZED", "Invalid username or password.");
   }
 
   const employee = await findActiveEmployeeByEmail(username);
 
-  if (!employee) {
+  if (!employee || employee.password !== password) {
     throw new ApiError(401, "UNAUTHORIZED", "Invalid username or password.");
   }
 

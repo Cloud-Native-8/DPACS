@@ -4,14 +4,14 @@
 
 ### `POST /api/auth/login`
 
-Report service local development login. Password is currently the fixed demo password `password123`.
+Report service login. The password is read from the `employee.password` field.
 
 Request:
 
 ```json
 {
   "username": "BobChen@tsmc.tw",
-  "password": "password123"
+  "password": "Pass0002!"
 }
 ```
 
@@ -176,11 +176,59 @@ The report service validates HS256 tokens with `JWT_SECRET` and reads the curren
 - `GET /api/manager/reports/denied-access-logs/:logId`
 - `PATCH /api/manager/access-logs/:logId/note`
 
+Denied access log responses include `status` when `result` is `DENY`:
+
+- `status: false`: denied log is pending report handling
+- `status: true`: denied log has been handled
+
+`/api/manager/reports/team/workload-trend`, `/api/manager/reports/team/monthly-statistics`, and `/api/manager/reports/team/stay-hour-distribution` support optional department filtering:
+
+- `department_id`: filter by department id
+- `departmentId`: same filter, camelCase alias
+
+The department filter is applied inside the current user's JWT authorization scope.
+
+### `GET /api/me/attendance/summary`
+
+Query:
+
+- `startDate`: `YYYY-MM-DD`
+- `endDate`: `YYYY-MM-DD`
+
+Returns the current employee's attendance summary and all access logs in the selected date range.
+
+Response includes:
+
+```json
+{
+  "employeeId": 2,
+  "startDate": "2026-05-01",
+  "endDate": "2026-05-31",
+  "totalWorkingHours": 168,
+  "totalOvertimeHours": 4,
+  "isComplete": true,
+  "message": "Complete",
+  "incompleteDates": [],
+  "deniedAccessLogCount": 1,
+  "accessLogs": [
+    {
+      "logId": 1,
+      "employeeId": 2,
+      "direction": "IN",
+      "result": "ACCEPT",
+      "eventTime": "2026-05-01T09:00:00.000Z"
+    }
+  ]
+}
+```
+
 ### `GET /api/manager/reports/team/stay-hour-distribution`
 
 Query:
 
 - `yearMonth`: `YYYY-MM`
+- `department_id`: optional department id filter
+- `departmentId`: optional camelCase alias for `department_id`
 
 Returns daily average stay hours for all visible active employees in the selected month. The average uses all visible active employees as the denominator, so a day with no logs returns `averageStayHours: 0`.
 
