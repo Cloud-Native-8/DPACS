@@ -200,12 +200,6 @@ export default function TrendsPage() {
   useEffect(() => {
     const token = getStoredToken();
 
-    if (!token) {
-      setError("請先登入後再查看團隊趨勢。");
-      setIsLoading(false);
-      return;
-    }
-
     fetchAccessApi("/api/departments", token)
       .then((data) => {
         const nextDepartments = data.departments ?? [];
@@ -222,13 +216,14 @@ export default function TrendsPage() {
   useEffect(() => {
     const token = getStoredToken();
 
-    if (!token) return undefined;
+    if (!token || !selectedDepartmentId) return undefined;
 
     setIsLoading(true);
     setError("");
 
     const params = new URLSearchParams({
-      yearMonth: formatYearMonth(selectedPeriod)
+      yearMonth: formatYearMonth(selectedPeriod),
+      departmentId: selectedDepartmentId
     });
 
     if (selectedDepartmentId !== "company") {
@@ -252,8 +247,10 @@ export default function TrendsPage() {
         setIsLoading(false);
       });
 
-    return undefined;
-  }, [selectedDepartmentId, selectedPeriod]);
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedPeriod, selectedDepartmentId]);
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-950 sm:px-6 lg:px-10">
