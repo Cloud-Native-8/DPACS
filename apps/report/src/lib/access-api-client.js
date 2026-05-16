@@ -1,9 +1,7 @@
 export const getStoredToken = () => {
   if (typeof window === "undefined") return null;
 
-  return (
-    localStorage.getItem("token") ?? ""
-  );
+  return localStorage.getItem("token");
 };
 
 export const getApiUrl = (path) => {
