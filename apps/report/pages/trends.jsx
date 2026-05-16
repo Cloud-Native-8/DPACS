@@ -10,7 +10,7 @@ const formatYearMonth = ({ year, month }) => {
 
 const parseDateKey = (dateKey) => {
   const [year, month, day] = dateKey.split("-").map(Number);
-  return new Date(year, month - 1, day);
+  return new Date(Date.UTC(year, month - 1, day));
 };
 
 const getHeatmapColorClass = (hours) => {
@@ -26,7 +26,7 @@ const buildCalendarCells = (dailyAverages = []) => {
   if (!dailyAverages.length) return [];
 
   const firstDate = parseDateKey(dailyAverages[0].date);
-  const leadingEmptyCells = firstDate.getDay();
+  const leadingEmptyCells = firstDate.getUTCDay();
   const emptyCells = Array.from({ length: leadingEmptyCells }, (_, index) => ({
     key: `empty-${index}`,
     isEmpty: true
@@ -36,7 +36,7 @@ const buildCalendarCells = (dailyAverages = []) => {
     ...emptyCells,
     ...dailyAverages.map((record) => ({
       key: record.date,
-      day: parseDateKey(record.date).getDate(),
+      day: parseDateKey(record.date).getUTCDate(),
       averageStayHours: record.averageStayHours,
       activeEmployeeCount: record.activeEmployeeCount,
       employeeCount: record.employeeCount
@@ -57,7 +57,10 @@ const formatMinuteDiff = (value) => {
 };
 
 const DepartmentSelect = ({ departments, value, onChange }) => {
-  const hasDepartments = departments.length > 0;
+  const selectableDepartments = departments.filter(
+    (department) => department.departmentName !== "Company"
+  );
+  const hasDepartments = selectableDepartments.length > 0;
 
   return (
     <label className="relative inline-flex items-center">
@@ -67,8 +70,9 @@ const DepartmentSelect = ({ departments, value, onChange }) => {
         onChange={(event) => onChange(event.target.value)}
         className="h-11 min-w-44 appearance-none rounded-2xl border-0 bg-slate-100 py-0 pl-5 pr-14 text-sm font-medium leading-none text-slate-900 outline-none transition hover:bg-slate-200 focus:ring-2 focus:ring-slate-300 disabled:text-slate-400"
       >
+        <option value="company">Company</option>
         {hasDepartments ? (
-          departments.map((department) => (
+          selectableDepartments.map((department) => (
             <option key={department.departmentId} value={department.departmentId}>
               {department.departmentName}
             </option>
@@ -187,14 +191,13 @@ export default function TrendsPage() {
 
   const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
   const [departments, setDepartments] = useState([]);
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState("company");
   const [statistics, setStatistics] = useState(null);
   const [distribution, setDistribution] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    let isMounted = true;
     const token = getStoredToken();
 
     if (!token) {
@@ -207,21 +210,16 @@ export default function TrendsPage() {
       .then((data) => {
         const nextDepartments = data.departments ?? [];
         setDepartments(nextDepartments);
-        setSelectedDepartmentId((current) =>
-          current || String(nextDepartments[0]?.departmentId ?? "")
-        );
+        setSelectedDepartmentId((current) => current || "company");
       })
       .catch((fetchError) => {
         setError(fetchError.message);
       });
 
-    return () => {
-      isMounted = false;
-    };
+    return undefined;
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
     const token = getStoredToken();
 
     if (!token) return undefined;
@@ -232,6 +230,10 @@ export default function TrendsPage() {
     const params = new URLSearchParams({
       yearMonth: formatYearMonth(selectedPeriod)
     });
+
+    if (selectedDepartmentId !== "company") {
+      params.set("department_id", selectedDepartmentId);
+    }
 
     Promise.all([
       fetchAccessApi(`/api/manager/reports/team/monthly-statistics?${params}`, token),
@@ -250,10 +252,8 @@ export default function TrendsPage() {
         setIsLoading(false);
       });
 
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedPeriod]);
+    return undefined;
+  }, [selectedDepartmentId, selectedPeriod]);
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-950 sm:px-6 lg:px-10">

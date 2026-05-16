@@ -1,16 +1,29 @@
-export const formatDateTime = (dateString, locale = "zh-TW") =>
-  new Intl.DateTimeFormat(locale, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  }).format(new Date(dateString));
+const pad = (value) => String(value).padStart(2, "0");
 
-export const formatTime = (dateString, locale = "zh-TW") =>
-  new Intl.DateTimeFormat(locale, {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  }).format(new Date(dateString));
+const parseTimestamp = (dateString) => {
+  const date = new Date(dateString);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+export const getDateKeyFromTimestamp = (dateString) => {
+  const date = parseTimestamp(dateString);
+  if (!date) return "";
+
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+};
+
+export const formatDateTime = (dateString) => {
+  const date = parseTimestamp(dateString);
+  if (!date) return "-";
+
+  return `${date.getUTCFullYear()}/${pad(date.getUTCMonth() + 1)}/${pad(
+    date.getUTCDate()
+  )} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+};
+
+export const formatTime = (dateString) => {
+  const date = parseTimestamp(dateString);
+  if (!date) return "-";
+
+  return `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+};

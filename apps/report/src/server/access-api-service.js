@@ -91,7 +91,7 @@ function toResult(value) {
 }
 
 function startOfDay(date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
 function endOfDay(date) {
@@ -119,8 +119,8 @@ function parseYearMonth(value) {
 }
 
 function monthRange(yearMonth) {
-  const start = new Date(yearMonth.year, yearMonth.month - 1, 1);
-  const end = new Date(yearMonth.year, yearMonth.month, 1);
+  const start = new Date(Date.UTC(yearMonth.year, yearMonth.month - 1, 1));
+  const end = new Date(Date.UTC(yearMonth.year, yearMonth.month, 1));
   return { start, end };
 }
 
@@ -134,23 +134,30 @@ function formatTime(date) {
     return null;
   }
 
-  return date.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  });
+  return `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(
+    2,
+    "0"
+  )}`;
 }
 
 function formatDate(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
 
 function formatEventDate(date) {
   return date.toISOString().slice(0, 10);
+}
+
+function eventDayRange(date) {
+  const start = new Date(`${formatEventDate(date)}T00:00:00.000Z`);
+  return {
+    start,
+    end: new Date(start.getTime() + DAY_MS)
+  };
 }
 
 function sameDay(a, b) {
@@ -758,9 +765,8 @@ async function getDeniedAccessLogDetail(logId, scope) {
 
   ensureVisibleEmployee(scope, deniedAccessLog.employeeId);
 
-  const dayStart = startOfDay(parseDate(formatEventDate(deniedAccessLog.eventTime), deniedAccessLog.eventTime));
-  const dayEnd = new Date(dayStart.getTime() + DAY_MS);
-  const dailyAccessSequence = await getEmployeeLogs(deniedAccessLog.employeeId, dayStart, dayEnd);
+  const { start, end } = eventDayRange(deniedAccessLog.eventTime);
+  const dailyAccessSequence = await getEmployeeLogs(deniedAccessLog.employeeId, start, end);
 
   return {
     deniedAccessLog: formatAccessLog(deniedAccessLog),
@@ -790,6 +796,44 @@ async function updateAccessLogNote(logId, body, scope) {
     },
     data: {
       note: body?.note ?? null
+    },
+    include: accessLogInclude()
+  });
+
+  return formatAccessLog(log);
+}
+
+async function updateAccessLogStatus(logId, body, scope) {
+  if (typeof body?.status !== "boolean") {
+    throw new ApiError(400, "BAD_REQUEST", "status must be a boolean.");
+  }
+
+  const existingLog = await prisma.accessLog.findUnique({
+    where: {
+      logId
+    },
+    select: {
+      employeeId: true,
+      result: true
+    }
+  });
+
+  if (!existingLog) {
+    return null;
+  }
+
+  if (String(existingLog.result).toUpperCase() !== "DENY") {
+    throw new ApiError(400, "BAD_REQUEST", "Only denied access logs can update status.");
+  }
+
+  ensureVisibleEmployee(scope, existingLog.employeeId);
+
+  const log = await prisma.accessLog.update({
+    where: {
+      logId
+    },
+    data: {
+      status: body.status
     },
     include: accessLogInclude()
   });
@@ -846,6 +890,8 @@ async function getPresenceEmployees(query, scope) {
       jobLevelName: inferJobLevel(log.employee).jobLevelName,
       email: log.employee.email,
       phone: log.employee.phone,
+      departmentId: toNumber(log.employee.departmentId),
+      departmentName: log.employee.department?.departmentName ?? null,
       siteId: toNumber(log.siteId),
       isInside: true,
       lastAccessTime: log.eventTime.toISOString()
@@ -961,11 +1007,14 @@ async function getTeamMonthlyStatistics(query, scope) {
   const recordsByEmployee = await allDailyWorkRecords(start, end, scope, {
     departmentIds: scopedDepartmentIds(query, scope)
   });
+  const employeeCount = recordsByEmployee.length;
   const activeRecords = recordsByEmployee.flatMap((item) =>
     item.dailyRecords.filter((record) => record.accessEvents.length > 0)
   );
+  const activeDates = new Set(activeRecords.map((record) => record.date));
+  const totalWorkingHours = activeRecords.reduce((sum, record) => sum + record.workingHours, 0);
   const averageDailyStayHours = activeRecords.length
-    ? round(activeRecords.reduce((sum, record) => sum + record.workingHours, 0) / activeRecords.length)
+    ? round(totalWorkingHours / (employeeCount * activeDates.size || 1))
     : 0;
   const checkIns = activeRecords
     .map((record) => record.accessEvents.find((log) => log.result === "ACCEPT" && log.direction === "IN"))
@@ -999,14 +1048,14 @@ async function getTeamMonthlyStatistics(query, scope) {
 }
 
 async function getTeamWorkloadTrend(query, scope) {
-  const year = toInt(query.year) ?? new Date().getFullYear();
+  const year = toInt(query.year) ?? new Date().getUTCFullYear();
   const periodType = toText(query.periodType)?.toUpperCase() === "YEARLY" ? "YEARLY" : "QUARTERLY";
   const periods = periodType === "YEARLY"
-    ? [{ label: String(year), start: new Date(year, 0, 1), end: new Date(year + 1, 0, 1) }]
+    ? [{ label: String(year), start: new Date(Date.UTC(year, 0, 1)), end: new Date(Date.UTC(year + 1, 0, 1)) }]
     : [0, 1, 2, 3].map((quarter) => ({
       label: `${year}-Q${quarter + 1}`,
-      start: new Date(year, quarter * 3, 1),
-      end: new Date(year, quarter * 3 + 3, 1)
+      start: new Date(Date.UTC(year, quarter * 3, 1)),
+      end: new Date(Date.UTC(year, quarter * 3 + 3, 1))
     }));
 
   const data = [];
@@ -1138,6 +1187,9 @@ export async function handleAccessApiRequest({ method, path, query, body, curren
   }
   if (method === "PATCH" && segments[0] === "manager" && segments[1] === "access-logs" && segments[3] === "note") {
     return updateAccessLogNote(toBigInt(segments[2]), body, scope);
+  }
+  if (method === "PATCH" && segments[0] === "manager" && segments[1] === "access-logs" && segments[3] === "status") {
+    return updateAccessLogStatus(toBigInt(segments[2]), body, scope);
   }
 
   throw new ApiError(404, "NOT_FOUND", `No report API route for ${method} ${joined}`);
