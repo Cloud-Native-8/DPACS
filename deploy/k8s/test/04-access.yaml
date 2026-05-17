@@ -82,7 +82,7 @@ metadata:
     alb.ingress.kubernetes.io/success-codes: "200-399"
     prometheus.io/scrape: "true"
     prometheus.io/path: /metrics
-    prometheus.io/port: "80"
+    prometheus.io/port: "4000"
 spec:
   type: ClusterIP
   selector:
