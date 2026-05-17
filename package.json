@@ -12,6 +12,7 @@
     "db:remove": "docker compose rm -sf postgres",
     "db:down": "pnpm db:remove",
     "db:logs": "docker compose logs postgres",
+    "valkey:flush": "bash ./scripts/valkey-flush.sh",
     "queue:setup": "bash ./packages/queue/scripts/setup-local.sh",
     "local:up": "bash ./scripts/local-up.sh",
     "local:down": "docker compose down",

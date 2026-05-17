@@ -78,12 +78,24 @@
           <label>
             Access Point ID
             <select name="access_point_id" required>
-              <option value="1" data-site-id="1">Hsinchu Fab 12 - Main Gate</option>
-              <option value="2" data-site-id="1">Hsinchu Fab 12 - Office Entrance</option>
-              <option value="3" data-site-id="2">Taichung Fab 15 - Clean Room Entrance</option>
-              <option value="4" data-site-id="2">Taichung Fab 15 - Warehouse Gate</option>
-              <option value="5" data-site-id="3">Tainan Fab 18 - Visitor Entrance</option>
-              <option value="6" data-site-id="3">Tainan Fab 18 - Control Room Door</option>
+              <option value="1" data-site-id="1">
+                Hsinchu Fab 12 - Main Gate
+              </option>
+              <option value="2" data-site-id="1">
+                Hsinchu Fab 12 - Office Entrance
+              </option>
+              <option value="3" data-site-id="2">
+                Taichung Fab 15 - Clean Room Entrance
+              </option>
+              <option value="4" data-site-id="2">
+                Taichung Fab 15 - Warehouse Gate
+              </option>
+              <option value="5" data-site-id="3">
+                Tainan Fab 18 - Visitor Entrance
+              </option>
+              <option value="6" data-site-id="3">
+                Tainan Fab 18 - Control Room Door
+              </option>
             </select>
           </label>
           <label>
@@ -124,7 +136,7 @@
           employee_id: formData.get("employee_id"),
           access_point_id: formData.get("access_point_id"),
           site_id: formData.get("site_id"),
-          direction: formData.get("direction")
+          direction: formData.get("direction"),
         };
 
         result.textContent = "Loading...";
