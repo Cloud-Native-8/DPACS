@@ -8,6 +8,7 @@ spec:
   template:
     spec:
       restartPolicy: Never
+      ttlSecondsAfterFinished: 300
       containers:
         - name: db-migrate
           image: 390402574827.dkr.ecr.ap-northeast-1.amazonaws.com/dpacs/db-migrate:latest

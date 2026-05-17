@@ -9,6 +9,7 @@ spec:
   template:
     spec:
       restartPolicy: Never
+      ttlSecondsAfterFinished: 300
       containers:
         - name: valkey-flush
           image: valkey/valkey:latest
