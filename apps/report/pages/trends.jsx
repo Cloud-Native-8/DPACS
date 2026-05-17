@@ -214,6 +214,7 @@ export default function TrendsPage() {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
     const token = getStoredToken();
 
     if (!token || !selectedDepartmentId) return undefined;
@@ -235,15 +236,18 @@ export default function TrendsPage() {
       fetchAccessApi(`/api/manager/reports/team/stay-hour-distribution?${params}`, token)
     ])
       .then(([statisticsData, distributionData]) => {
+        if (!isMounted) return;
         setStatistics(statisticsData);
         setDistribution(distributionData);
       })
       .catch((fetchError) => {
+        if (!isMounted) return;
         setError(fetchError.message);
         setStatistics(null);
         setDistribution(null);
       })
       .finally(() => {
+        if (!isMounted) return;
         setIsLoading(false);
       });
 
