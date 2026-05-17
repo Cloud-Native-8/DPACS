@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: access-loadgen
+  namespace: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: access-loadgen
+  template:
+    metadata:
+      labels:
+        app: access-loadgen
+    spec:
+      containers:
+        - name: access-loadgen
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              echo "Starting access load generator..."
+
+              i=0
+              while [ "$i" -lt 100 ]; do
+                while true; do
+                  wget -q -O- http://access/healthz >/dev/null 2>&1
+                done &
+                i=$((i + 1))
+              done
+
+              wait
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "32Mi"
+            limits:
+              cpu: "500m"
+              memory: "128Mi"

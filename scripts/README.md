@@ -26,6 +26,12 @@
 pnpm db:seed packages/db/seed/data0506.sql
 ```
 
+### `valkey-flush.sh`
+
+給 `pnpm valkey:flush` 用。
+
+它會對本地 `valkey` container 執行 `FLUSHALL`，清空目前所有 anti-passback state 與其他 key。
+
 ### `run-with-root-env.mjs`
 
 給這類指令共用：

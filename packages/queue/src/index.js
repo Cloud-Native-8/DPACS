@@ -7,6 +7,14 @@ import {
 } from "@aws-sdk/client-sqs";
 import { randomUUID } from "node:crypto";
 
+export class AccessEventValidationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "AccessEventValidationError";
+    this.statusCode = 400;
+  }
+}
+
 function required(name) {
   const value = process.env[name];
 
@@ -18,10 +26,10 @@ function required(name) {
 }
 
 function normalizeString(value, fieldName) {
-  const normalized = String(value || "").trim();
+  const normalized = String(value ?? "").trim();
 
   if (!normalized) {
-    throw new Error(`${fieldName} is required`);
+    throw new AccessEventValidationError(`${fieldName} is required`);
   }
 
   return normalized;
@@ -29,27 +37,48 @@ function normalizeString(value, fieldName) {
 
 function normalizeBoolean(value, fieldName) {
   if (typeof value !== "boolean") {
-    throw new Error(`${fieldName} must be boolean`);
+    throw new AccessEventValidationError(`${fieldName} must be boolean`);
   }
 
   return value;
 }
 
-function normalizeDirection(value, fieldName) {
-  const normalized = String(value || "").trim().toLowerCase();
+function normalizeNumericId(value, fieldName) {
+  const normalized = normalizeString(value, fieldName);
 
-  if (!["in", "out"].includes(normalized)) {
-    throw new Error(`${fieldName} must be either in or out`);
+  if (!/^\d+$/.test(normalized)) {
+    throw new AccessEventValidationError(
+      `${fieldName} must be a numeric string`,
+    );
   }
 
   return normalized;
 }
 
+function normalizeDirection(value, fieldName) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toLowerCase();
+
+  if (normalized === "in") {
+    return "in";
+  }
+
+  if (normalized === "out") {
+    return "out";
+  }
+
+  throw new AccessEventValidationError(`${fieldName} must be either in or out`);
+}
+
 export function parseAccessRequest(payload = {}) {
   return {
-    employee_id: normalizeString(payload.employee_id, "employee_id"),
-    access_point_id: normalizeString(payload.access_point_id, "access_point_id"),
-    site_id: normalizeString(payload.site_id, "site_id"),
+    employee_id: normalizeNumericId(payload.employee_id, "employee_id"),
+    access_point_id: normalizeNumericId(
+      payload.access_point_id,
+      "access_point_id",
+    ),
+    site_id: normalizeNumericId(payload.site_id, "site_id"),
     direction: normalizeDirection(payload.direction, "direction"),
   };
 }
@@ -69,15 +98,24 @@ export function createAccessCheckedEvent(request, result) {
 }
 
 export function parseAccessEvent(body) {
-  const event = typeof body === "string" ? JSON.parse(body) : body;
+  let event;
+
+  try {
+    event = typeof body === "string" ? JSON.parse(body) : body;
+  } catch {
+    throw new AccessEventValidationError("event body must be valid JSON");
+  }
 
   return {
     eventId: normalizeString(event.eventId, "eventId"),
     eventType: normalizeString(event.eventType, "eventType"),
     occurredAt: normalizeString(event.occurredAt, "occurredAt"),
-    employee_id: normalizeString(event.employee_id, "employee_id"),
-    access_point_id: normalizeString(event.access_point_id, "access_point_id"),
-    site_id: normalizeString(event.site_id, "site_id"),
+    employee_id: normalizeNumericId(event.employee_id, "employee_id"),
+    access_point_id: normalizeNumericId(
+      event.access_point_id,
+      "access_point_id",
+    ),
+    site_id: normalizeNumericId(event.site_id, "site_id"),
     direction: normalizeDirection(event.direction, "direction"),
     result: normalizeBoolean(event.result, "result"),
     reason: normalizeString(event.reason, "reason"),
@@ -118,11 +156,14 @@ function getSqsClient() {
 }
 
 export async function sendAccessEvent(event) {
-  console.log("access checked event", event);
+  const normalizedEvent = parseAccessEvent(event);
+
+  console.log("access checked event", normalizedEvent);
+
   await getSqsClient().send(
     new SendMessageCommand({
       QueueUrl: required("SQS_QUEUE_URL"),
-      MessageBody: JSON.stringify(parseAccessEvent(event)),
+      MessageBody: JSON.stringify(normalizedEvent),
     }),
   );
 }

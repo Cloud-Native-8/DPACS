@@ -3,12 +3,34 @@ import {
   parseAccessRequest,
   sendAccessEvent,
 } from "@repo/queue";
+import { accessDependencyErrorsTotal } from "../observability/metrics.js";
 import {
   clearLastAccessState,
   getLastAccessState,
   rememberAccessState,
 } from "./anti-passback.service.js";
+
 console.log("LOADED NEW access-decision.service.js", new Date().toISOString());
+
+class AccessDependencyError extends Error {
+  constructor(dependency, cause) {
+    super(`${dependency} dependency failed`);
+    this.name = "AccessDependencyError";
+    this.dependency = dependency;
+    this.cause = cause;
+    this.statusCode = 503;
+  }
+}
+
+async function runDependency(dependency, callback) {
+  try {
+    return await callback();
+  } catch (error) {
+    accessDependencyErrorsTotal.inc({ dependency });
+    throw new AccessDependencyError(dependency, error);
+  }
+}
+
 export function evaluateAntiPassback(request, previousState) {
   const isEntry = request.direction === "in";
 
@@ -50,17 +72,26 @@ export function evaluateAntiPassback(request, previousState) {
 
 export async function evaluateAccessRequest(payload) {
   const request = parseAccessRequest(payload);
-  const previous = await getLastAccessState(request.employee_id);
+
+  const previous = await runDependency("valkey", () =>
+    getLastAccessState(request.employee_id),
+  );
+
   const decision = evaluateAntiPassback(request, previous.state);
+
   if (decision.allowed) {
     if (request.direction === "in") {
-      await rememberAccessState(request.employee_id, {
-        direction: "in",
-        access_point_id: request.access_point_id,
-        site_id: request.site_id,
-      });
+      await runDependency("valkey", () =>
+        rememberAccessState(request.employee_id, {
+          direction: "in",
+          access_point_id: request.access_point_id,
+          site_id: request.site_id,
+        }),
+      );
     } else {
-      await clearLastAccessState(request.employee_id);
+      await runDependency("valkey", () =>
+        clearLastAccessState(request.employee_id),
+      );
     }
   }
 
@@ -75,7 +106,8 @@ export async function evaluateAccessRequest(payload) {
   };
 
   const event = createAccessCheckedEvent(request, result);
-  await sendAccessEvent(event);
+
+  await runDependency("sqs", () => sendAccessEvent(event));
 
   return {
     ...result,

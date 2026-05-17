@@ -1,6 +1,11 @@
 import { Router } from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  accessCheckDurationSeconds,
+  accessCheckTotal,
+  getAccessCheckResultLabel,
+} from "../observability/metrics.js";
 import { evaluateAccessRequest } from "../services/access-decision.service.js";
 
 const router = Router();
@@ -13,12 +18,29 @@ router.get("/check", (_req, res) => {
 });
 
 router.post("/check", async (req, res, next) => {
+  const endTimer = accessCheckDurationSeconds.startTimer();
+
   try {
     const result = await evaluateAccessRequest(req.body);
+    const resultLabel = getAccessCheckResultLabel(result);
+
+    accessCheckTotal.inc({ result: resultLabel });
+    endTimer({ result: resultLabel });
+
     res.status(200).json(result);
   } catch (error) {
-    console.log({ error });
-    error.statusCode = error.statusCode || 400;
+    const statusCode = error.statusCode || 400;
+
+    console.warn("access check failed", {
+      name: error.name,
+      message: error.message,
+      statusCode,
+    });
+
+    accessCheckTotal.inc({ result: "error" });
+    endTimer({ result: "error" });
+
+    error.statusCode = statusCode;
     next(error);
   }
 });

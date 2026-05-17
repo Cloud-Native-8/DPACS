@@ -1,0 +1,17 @@
+fullnameOverride: cluster-autoscaler
+
+cloudProvider: aws
+awsRegion: ap-northeast-1
+
+autoDiscovery:
+  clusterName: DPACS
+
+rbac:
+  serviceAccount:
+    create: false
+    name: cluster-autoscaler
+
+extraArgs:
+  balance-similar-node-groups: "true"
+  skip-nodes-with-system-pods: "false"
+  expander: least-waste
