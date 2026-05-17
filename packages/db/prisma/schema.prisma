@@ -23,3 +23,115 @@ model AccessEvent {
   @@index([occurredAt(sort: Desc)])
   @@map("access_events")
 }
+
+model Department {
+  departmentId   BigInt    @id @map("department_id")
+  departmentName String    @map("department_name") @db.VarChar(100)
+  managerId      BigInt?   @map("manager_id")
+  createdAt      DateTime? @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime? @map("updated_at") @db.Timestamp(6)
+
+  manager               Employee?              @relation("DepartmentManager", fields: [managerId], references: [employeeId], onDelete: NoAction, onUpdate: NoAction)
+  employees             Employee[]             @relation("EmployeeDepartment")
+  ancestorDepartments   DepartmentHierarchy[]  @relation("DepartmentAncestors")
+  descendantDepartments DepartmentHierarchy[]  @relation("DepartmentDescendants")
+
+  @@map("department")
+}
+
+model DepartmentHierarchy {
+  ancestorDepartmentId   BigInt @map("ancestor_department_id")
+  descendantDepartmentId BigInt @map("descendant_department_id")
+  depth                  Int
+
+  ancestorDepartment   Department @relation("DepartmentAncestors", fields: [ancestorDepartmentId], references: [departmentId], onDelete: NoAction, onUpdate: NoAction)
+  descendantDepartment Department @relation("DepartmentDescendants", fields: [descendantDepartmentId], references: [departmentId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([ancestorDepartmentId, descendantDepartmentId])
+  @@map("department_hierarchy")
+}
+
+model Employee {
+  employeeId   BigInt    @id @map("employee_id")
+  employeeName String    @map("employee_name") @db.VarChar(100)
+  email        String    @unique @db.VarChar(255)
+  phone        String?   @db.VarChar(15)
+  password     String    @db.VarChar(20)
+  jobTitle     String?   @map("job_title") @db.VarChar(100)
+  departmentId BigInt    @map("department_id")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime? @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime? @map("updated_at") @db.Timestamp(6)
+
+  department         Department           @relation("EmployeeDepartment", fields: [departmentId], references: [departmentId], onDelete: NoAction, onUpdate: NoAction)
+  managedDepartments Department[]         @relation("DepartmentManager")
+  employeeSiteAccess EmployeeSiteAccess[]
+  accessLogs         AccessLog[]
+
+  @@map("employee")
+}
+
+model Site {
+  siteId      BigInt    @id @map("site_id")
+  siteName    String    @map("site_name") @db.VarChar(100)
+  siteAddress String    @map("site_address")
+  createdAt   DateTime? @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime? @map("updated_at") @db.Timestamp(6)
+
+  accessPoints       AccessPoint[]
+  employeeSiteAccess EmployeeSiteAccess[]
+  accessLogs         AccessLog[]
+
+  @@map("site")
+}
+
+model AccessPoint {
+  accessPointId      BigInt    @id @map("access_point_id")
+  accessPointName    String    @map("access_point_name") @db.VarChar(100)
+  siteId             BigInt    @map("site_id")
+  locationDescription String?  @map("location_description")
+  isActive           Boolean   @default(true) @map("is_active")
+  createdAt          DateTime? @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime? @map("updated_at") @db.Timestamp(6)
+
+  site       Site        @relation(fields: [siteId], references: [siteId], onDelete: NoAction, onUpdate: NoAction)
+  accessLogs AccessLog[]
+
+  @@map("access_point")
+}
+
+model EmployeeSiteAccess {
+  employeeId BigInt    @map("employee_id")
+  siteId     BigInt    @map("site_id")
+  isActive   Boolean   @default(true) @map("is_active")
+  grantedAt  DateTime? @map("granted_at") @db.Timestamp(6)
+  expiredAt  DateTime? @map("expired_at") @db.Timestamp(6)
+  createdAt  DateTime? @map("created_at") @db.Timestamp(6)
+  updatedAt  DateTime? @map("updated_at") @db.Timestamp(6)
+
+  employee Employee @relation(fields: [employeeId], references: [employeeId], onDelete: NoAction, onUpdate: NoAction)
+  site     Site     @relation(fields: [siteId], references: [siteId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([employeeId, siteId])
+  @@map("employee_site_access")
+}
+
+model AccessLog {
+  logId         BigInt    @id @map("log_id")
+  employeeId    BigInt    @map("employee_id")
+  siteId        BigInt    @map("site_id")
+  accessPointId BigInt    @map("access_point_id")
+  direction     String    @db.VarChar(10)
+  result        String    @db.VarChar(10)
+  status        Boolean?
+  reason        String?
+  eventTime     DateTime  @map("event_time") @db.Timestamp(6)
+  note          String?
+  createdAt     DateTime? @map("created_at") @db.Timestamp(6)
+
+  employee    Employee    @relation(fields: [employeeId], references: [employeeId], onDelete: NoAction, onUpdate: NoAction)
+  site        Site        @relation(fields: [siteId], references: [siteId], onDelete: NoAction, onUpdate: NoAction)
+  accessPoint AccessPoint @relation(fields: [accessPointId], references: [accessPointId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("access_log")
+}

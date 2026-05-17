@@ -72,22 +72,45 @@
         <h1>Access Check Playground</h1>
         <form id="check-form">
           <label>
-            User ID
-            <input name="userId" value="E10001" required />
+            Employee ID
+            <input name="employee_id" value="1" required />
           </label>
           <label>
-            Door ID
-            <input name="doorId" value="FAB-A-01" required />
+            Access Point ID
+            <select name="access_point_id" required>
+              <option value="1" data-site-id="1">
+                Hsinchu Fab 12 - Main Gate
+              </option>
+              <option value="2" data-site-id="1">
+                Hsinchu Fab 12 - Office Entrance
+              </option>
+              <option value="3" data-site-id="2">
+                Taichung Fab 15 - Clean Room Entrance
+              </option>
+              <option value="4" data-site-id="2">
+                Taichung Fab 15 - Warehouse Gate
+              </option>
+              <option value="5" data-site-id="3">
+                Tainan Fab 18 - Visitor Entrance
+              </option>
+              <option value="6" data-site-id="3">
+                Tainan Fab 18 - Control Room Door
+              </option>
+            </select>
           </label>
           <label>
-            Factory ID
-            <input name="factoryId" value="FAB-A" required />
+            Site ID
+            <select name="site_id" required>
+              <option value="1">Hsinchu Fab 12</option>
+              <option value="2">Taichung Fab 15</option>
+              <option value="3">Tainan Fab 18</option>
+            </select>
           </label>
           <label>
             Direction
-            <select name="in">
-              <option value="true">ENTER</option>
-              <option value="false">EXIT</option>
+            <select name="direction">
+              <option value="in">ENTER</option>
+              <option value="out">EXIT</option>
             </select>
           </label>
           <button type="submit">POST /check</button>
@@ -99,26 +122,32 @@
       const form = document.getElementById("check-form");
       const result = document.getElementById("result");
 
+      const ACCESS_BASE_PATH =
+        window.location.pathname === "/access" ||
+        window.location.pathname.startsWith("/access/")
+          ? "/access"
+          : "";
+
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
 
         const formData = new FormData(form);
         const payload = {
-          userId: formData.get("userId"),
-          doorId: formData.get("doorId"),
-          factoryId: formData.get("factoryId"),
-          in: formData.get("in") === "true"
+          employee_id: formData.get("employee_id"),
+          access_point_id: formData.get("access_point_id"),
+          site_id: formData.get("site_id"),
+          direction: formData.get("direction"),
         };
 
         result.textContent = "Loading...";
 
         try {
-          const response = await fetch("/check", {
+          const response = await fetch(`${ACCESS_BASE_PATH}/check`, {
             method: "POST",
             headers: {
-              "content-type": "application/json"
+              "content-type": "application/json",
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
           });
 
           const json = await response.json();
@@ -127,6 +156,30 @@
           result.textContent = error.message;
         }
       });
+
+      // 選accesspoint只顯示哪個廠的accesspointint
+      const siteSelect = form.elements.site_id;
+      const accessPointSelect = form.elements.access_point_id;
+
+      function syncAccessPoints() {
+        const selectedSiteId = siteSelect.value;
+        const options = Array.from(accessPointSelect.options);
+
+        for (const option of options) {
+          option.hidden = option.dataset.siteId !== selectedSiteId;
+        }
+
+        const currentOption = accessPointSelect.selectedOptions[0];
+        if (!currentOption || currentOption.hidden) {
+          const firstVisible = options.find((option) => !option.hidden);
+          if (firstVisible) {
+            accessPointSelect.value = firstVisible.value;
+          }
+        }
+      }
+
+      siteSelect.addEventListener("change", syncAccessPoints);
+      syncAccessPoints();
     </script>
   </body>
 </html>

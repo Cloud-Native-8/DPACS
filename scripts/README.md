@@ -14,6 +14,24 @@
 2. 等 `localstack` ready
 3. 呼叫 [packages/queue/scripts/setup-local.sh](/Users/slowpoke/Documents/雲原生/cloud-native-8/packages/queue/scripts/setup-local.sh) 建立本地 queue
 
+### `db-seed.sh`
+
+給 `pnpm db:seed` 用。
+
+它會把 [packages/db/seed](/Users/slowpoke/Documents/雲原生/cloud-native-8/packages/db/seed) 內所有 `.sql` 檔依檔名排序後，透過 `psql` 匯入本地 `postgres` container 的 `app` database。
+
+也支援指定單一 seed 檔：
+
+```bash
+pnpm db:seed packages/db/seed/data0506.sql
+```
+
+### `valkey-flush.sh`
+
+給 `pnpm valkey:flush` 用。
+
+它會對本地 `valkey` container 執行 `FLUSHALL`，清空目前所有 anti-passback state 與其他 key。
+
 ### `run-with-root-env.mjs`
 
 給這類指令共用：
@@ -24,6 +42,8 @@
 - `pnpm db:*`
 
 作用是先讀 root `.env`，再把同一份環境變數帶進後續 `pnpm --filter ...` 指令。這樣每個 service 本地開發都能統一吃 root `.env`。
+
+例如 `pnpm db:reset` 會透過這層包裝去執行 `@repo/db` 的 `prisma migrate reset --force`。
 
 ### `workspace-build.mjs`
 

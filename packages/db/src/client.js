@@ -15,12 +15,28 @@ function required(name) {
   return value;
 }
 
+function numberEnv(name, fallback) {
+  const value = process.env[name];
+
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${name} must be a number`);
+  }
+
+  return parsed;
+}
+
 function createPrismaClient() {
   const adapter = new PrismaPg({
     connectionString: required("DATABASE_URL"),
-    max: Number(process.env.DB_POOL_MAX || 10),
-    connectionTimeoutMillis: 5000,
-    idleTimeoutMillis: 30000
+    max: numberEnv("DB_POOL_MAX", 10),
+    connectionTimeoutMillis: numberEnv("DB_CONNECTION_TIMEOUT_MS", 30000),
+    idleTimeoutMillis: numberEnv("DB_IDLE_TIMEOUT_MS", 30000),
   });
 
   return new PrismaClient({ adapter });

@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: valkey-flush
+  namespace: test
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: valkey-flush
+          image: valkey/valkey:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+          args:
+            - |
+              valkey-cli --tls --insecure \
+                -h dpacs-qq2arq.serverless.apne1.cache.amazonaws.com \
+                -p 6379 \
+                FLUSHALL

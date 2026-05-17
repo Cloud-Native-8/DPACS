@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-reset
+  namespace: test
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: db-reset
+          image: 390402574827.dkr.ecr.ap-northeast-1.amazonaws.com/dpacs/db-migrate:latest
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: migrator-env
+          command:
+            - sh
+            - -c
+          args:
+            - cd /repo/packages/db && pnpm prisma migrate reset --force

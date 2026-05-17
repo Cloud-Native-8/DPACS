@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prisma-studio
+  namespace: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prisma-studio
+  template:
+    metadata:
+      labels:
+        app: prisma-studio
+    spec:
+      containers:
+        - name: prisma-studio
+          image: 390402574827.dkr.ecr.ap-northeast-1.amazonaws.com/dpacs/db-migrate:latest
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: migrator-env
+          ports:
+            - containerPort: 5555
+          command:
+            - sh
+            - -c
+          args:
+            - cd /repo/packages/db && pnpm prisma studio --browser none --port 5555 --url "$DATABASE_URL"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prisma-studio
+  namespace: test
+spec:
+  type: ClusterIP
+  selector:
+    app: prisma-studio
+  ports:
+    - name: http
+      port: 5555
+      targetPort: 5555
