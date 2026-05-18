@@ -13,6 +13,7 @@ TRUNCATE TABLE
   "access_events"
 RESTART IDENTITY CASCADE;
 
+
 INSERT INTO "department" (
   "department_id",
   "department_name",
