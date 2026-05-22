@@ -6,7 +6,9 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "test": "cd ../.. && node scripts/run-with-root-env.mjs node --test \"apps/report/src/**/*.test.js\""
+    "test": "pnpm test:server && pnpm test:ui",
+    "test:server": "cd ../.. && node scripts/run-with-root-env.mjs node --test \"apps/report/src/**/*.test.js\"",
+    "test:ui": "vitest run"
   },
   "dependencies": {
     "@repo/db": "workspace:*",
@@ -16,7 +18,12 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "jsdom": "^29.1.1",
     "postcss": "^8.5.13",
-    "tailwindcss": "^4.2.4"
+    "tailwindcss": "^4.2.4",
+    "vitest": "^4.1.7"
   }
 }
