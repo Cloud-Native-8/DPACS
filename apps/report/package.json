@@ -6,7 +6,7 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "test": "node --eval \"console.log('report: no tests')\""
+    "test": "cd ../.. && node scripts/run-with-root-env.mjs node --test \"apps/report/src/**/*.test.js\""
   },
   "dependencies": {
     "@repo/db": "workspace:*",
