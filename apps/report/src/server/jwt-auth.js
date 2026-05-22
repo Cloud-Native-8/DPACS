@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { ApiError } from "./access-api-service.js";
+import { ApiError } from "./api-error.js";
 
 function base64UrlDecode(value) {
   return Buffer.from(value.replace(/-/g, "+").replace(/_/g, "/"), "base64");

@@ -1,5 +1,5 @@
 import { prisma } from "@repo/db/client";
-import { ApiError } from "./access-api-service.js";
+import { ApiError } from "./api-error.js";
 import { requireAuth, signJwt } from "./jwt-auth.js";
 
 function toNumber(value) {
