@@ -1,4 +1,4 @@
-import { ApiError } from "../../../src/server/access-api-service.js";
+import { ApiError } from "../../../src/server/api-error.js";
 import { loginEmployee } from "../../../src/server/auth-service.js";
 
 export default async function handler(req, res) {

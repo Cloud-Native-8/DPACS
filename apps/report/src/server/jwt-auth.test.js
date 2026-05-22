@@ -4,7 +4,7 @@ import test from "node:test";
 process.env.DATABASE_URL ??= "postgresql://postgres:postgres@localhost:5432/app";
 process.env.JWT_SECRET = "test-secret";
 
-const { ApiError } = await import("./access-api-service.js");
+const { ApiError } = await import("./api-error.js");
 const { requireAuth, signJwt } = await import("./jwt-auth.js");
 
 test("signJwt creates a token accepted by requireAuth", () => {
