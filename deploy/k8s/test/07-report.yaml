@@ -46,6 +46,12 @@ spec:
 
             - name: DB_POOL_MAX
               value: "5"
+
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: report-env
+                  key: JWT_SECRET
 ---
 apiVersion: v1
 kind: Service
