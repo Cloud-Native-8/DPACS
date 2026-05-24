@@ -28,7 +28,9 @@ function toNumber(value) {
 }
 
 function uniqueBigInts(values) {
-  return [...new Set(values.map((value) => value.toString()))].map((value) => BigInt(value));
+  return [...new Set(values.map((value) => value.toString()))].map((value) =>
+    BigInt(value),
+  );
 }
 
 function isVisibleEmployee(scope, employeeId) {
@@ -38,7 +40,11 @@ function isVisibleEmployee(scope, employeeId) {
 
 function ensureVisibleEmployee(scope, employeeId) {
   if (!isVisibleEmployee(scope, employeeId)) {
-    throw new ApiError(403, "FORBIDDEN", "You do not have permission to access this resource.");
+    throw new ApiError(
+      403,
+      "FORBIDDEN",
+      "You do not have permission to access this resource.",
+    );
   }
 }
 
@@ -52,7 +58,7 @@ function scopedEmployeeIdWhere(scope, requestedEmployeeId) {
   }
 
   return {
-    in: scope.employeeIds
+    in: scope.employeeIds,
   };
 }
 
@@ -63,7 +69,9 @@ function scopedDepartmentIds(query, scope) {
     return scope.departmentIds;
   }
 
-  return scope.departmentIds.filter((visibleDepartmentId) => visibleDepartmentId === departmentId);
+  return scope.departmentIds.filter(
+    (visibleDepartmentId) => visibleDepartmentId === departmentId,
+  );
 }
 
 function toText(value) {
@@ -94,7 +102,9 @@ function toResult(value) {
 }
 
 function startOfDay(date) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
 }
 
 function endOfDay(date) {
@@ -117,7 +127,9 @@ function parseYearMonth(value) {
     return undefined;
   }
 
-  const [year, month] = text.split("-").map((part) => Number.parseInt(part, 10));
+  const [year, month] = text
+    .split("-")
+    .map((part) => Number.parseInt(part, 10));
   return { text, year, month };
 }
 
@@ -137,10 +149,9 @@ function formatTime(date) {
     return null;
   }
 
-  return `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(
-    2,
-    "0"
-  )}`;
+  return `${String(date.getUTCHours()).padStart(2, "0")}:${String(
+    date.getUTCMinutes(),
+  ).padStart(2, "0")}`;
 }
 
 function formatDate(date) {
@@ -159,7 +170,7 @@ function eventDayRange(date) {
   const start = new Date(`${formatEventDate(date)}T00:00:00.000Z`);
   return {
     start,
-    end: new Date(start.getTime() + DAY_MS)
+    end: new Date(start.getTime() + DAY_MS),
   };
 }
 
@@ -208,7 +219,7 @@ function formatDepartment(department) {
     departmentName: department.departmentName,
     parentDepartmentId: null,
     createdAt: department.createdAt?.toISOString() ?? null,
-    updatedAt: department.updatedAt?.toISOString() ?? null
+    updatedAt: department.updatedAt?.toISOString() ?? null,
   };
 }
 
@@ -225,7 +236,7 @@ function formatEmployee(employee) {
     jobLevel,
     isActive: employee.isActive,
     createdAt: employee.createdAt?.toISOString() ?? null,
-    updatedAt: employee.updatedAt?.toISOString() ?? null
+    updatedAt: employee.updatedAt?.toISOString() ?? null,
   };
 }
 
@@ -235,7 +246,7 @@ function formatSite(site) {
     siteName: site.siteName,
     siteAddress: site.siteAddress,
     createdAt: site.createdAt?.toISOString() ?? null,
-    updatedAt: site.updatedAt?.toISOString() ?? null
+    updatedAt: site.updatedAt?.toISOString() ?? null,
   };
 }
 
@@ -247,12 +258,13 @@ function formatAccessPoint(accessPoint) {
     locationDescription: accessPoint.locationDescription,
     isActive: accessPoint.isActive,
     createdAt: accessPoint.createdAt?.toISOString() ?? null,
-    updatedAt: accessPoint.updatedAt?.toISOString() ?? null
+    updatedAt: accessPoint.updatedAt?.toISOString() ?? null,
   };
 }
 
 function formatAccessLog(log) {
-  const result = String(log.result).toUpperCase() === "DENY" ? "DENY" : "ACCEPT";
+  const result =
+    String(log.result).toUpperCase() === "DENY" ? "DENY" : "ACCEPT";
 
   return {
     logId: toNumber(log.logId),
@@ -268,7 +280,7 @@ function formatAccessLog(log) {
     reason: normalizeReason(log.reason),
     eventTime: log.eventTime.toISOString(),
     note: log.note,
-    createdAt: log.createdAt?.toISOString() ?? null
+    createdAt: log.createdAt?.toISOString() ?? null,
   };
 }
 
@@ -276,11 +288,11 @@ function accessLogInclude() {
   return {
     employee: {
       include: {
-        department: true
-      }
+        department: true,
+      },
     },
     site: true,
-    accessPoint: true
+    accessPoint: true,
   };
 }
 
@@ -319,8 +331,8 @@ function employeeKeywordWhere(keyword) {
       { employeeName: { contains: keyword, mode: "insensitive" } },
       { email: { contains: keyword, mode: "insensitive" } },
       { phone: { contains: keyword, mode: "insensitive" } },
-      { jobTitle: { contains: keyword, mode: "insensitive" } }
-    ]
+      { jobTitle: { contains: keyword, mode: "insensitive" } },
+    ],
   };
 }
 
@@ -332,11 +344,11 @@ async function resolveEmployeeId(query) {
 
   const employee = await prisma.employee.findFirst({
     orderBy: {
-      employeeId: "asc"
+      employeeId: "asc",
     },
     select: {
-      employeeId: true
-    }
+      employeeId: true,
+    },
   });
 
   return employee?.employeeId;
@@ -346,12 +358,12 @@ async function getVisibleEmployeeScope(currentUser) {
   const currentEmployeeId = BigInt(currentUser.employeeId);
   const currentEmployee = await prisma.employee.findUnique({
     where: {
-      employeeId: currentEmployeeId
+      employeeId: currentEmployeeId,
     },
     select: {
       employeeId: true,
-      departmentId: true
-    }
+      departmentId: true,
+    },
   });
 
   if (!currentEmployee) {
@@ -360,11 +372,11 @@ async function getVisibleEmployeeScope(currentUser) {
 
   const managedDepartments = await prisma.department.findMany({
     where: {
-      managerId: currentEmployeeId
+      managerId: currentEmployeeId,
     },
     select: {
-      departmentId: true
-    }
+      departmentId: true,
+    },
   });
 
   if (managedDepartments.length === 0) {
@@ -372,45 +384,47 @@ async function getVisibleEmployeeScope(currentUser) {
       currentEmployeeId,
       isManager: false,
       departmentIds: [currentEmployee.departmentId],
-      employeeIds: [currentEmployeeId]
+      employeeIds: [currentEmployeeId],
     };
   }
 
-  const managedDepartmentIds = managedDepartments.map((department) => department.departmentId);
+  const managedDepartmentIds = managedDepartments.map(
+    (department) => department.departmentId,
+  );
   const descendantRows = await prisma.departmentHierarchy.findMany({
     where: {
       ancestorDepartmentId: {
-        in: managedDepartmentIds
-      }
+        in: managedDepartmentIds,
+      },
     },
     select: {
-      descendantDepartmentId: true
-    }
+      descendantDepartmentId: true,
+    },
   });
   const departmentIds = uniqueBigInts([
     ...managedDepartmentIds,
-    ...descendantRows.map((row) => row.descendantDepartmentId)
+    ...descendantRows.map((row) => row.descendantDepartmentId),
   ]);
   const employees = await prisma.employee.findMany({
     where: {
       departmentId: {
-        in: departmentIds
-      }
+        in: departmentIds,
+      },
     },
     select: {
-      employeeId: true
-    }
+      employeeId: true,
+    },
   });
   const employeeIds = uniqueBigInts([
     currentEmployeeId,
-    ...employees.map((employee) => employee.employeeId)
+    ...employees.map((employee) => employee.employeeId),
   ]);
 
   return {
     currentEmployeeId,
     isManager: true,
     departmentIds,
-    employeeIds
+    employeeIds,
   };
 }
 
@@ -429,28 +443,33 @@ async function listDepartments(scope) {
   const departments = await prisma.department.findMany({
     where: {
       departmentId: {
-        in: scope.departmentIds
-      }
+        in: scope.departmentIds,
+      },
     },
     orderBy: {
-      departmentId: "asc"
-    }
+      departmentId: "asc",
+    },
   });
 
   const parentRows = await prisma.departmentHierarchy.findMany({
     where: {
-      depth: 1
-    }
+      depth: 1,
+    },
   });
   const parentByDepartment = new Map(
-    parentRows.map((row) => [row.descendantDepartmentId, row.ancestorDepartmentId])
+    parentRows.map((row) => [
+      row.descendantDepartmentId,
+      row.ancestorDepartmentId,
+    ]),
   );
 
   return {
     departments: departments.map((department) => ({
       ...formatDepartment(department),
-      parentDepartmentId: toNumber(parentByDepartment.get(department.departmentId))
-    }))
+      parentDepartmentId: toNumber(
+        parentByDepartment.get(department.departmentId),
+      ),
+    })),
   };
 }
 
@@ -460,25 +479,28 @@ async function listEmployees(query, scope) {
   const employees = await prisma.employee.findMany({
     where: {
       employeeId: {
-        in: scope.employeeIds
+        in: scope.employeeIds,
       },
       departmentId: {
-        in: scopedDepartmentIds(query, scope)
+        in: scopedDepartmentIds(query, scope),
       },
-      ...employeeKeywordWhere(keyword)
+      ...employeeKeywordWhere(keyword),
     },
     include: {
-      department: true
+      department: true,
     },
     orderBy: {
-      employeeId: "asc"
-    }
+      employeeId: "asc",
+    },
   });
 
   return {
     employees: employees
-      .filter((employee) => !jobLevelId || inferJobLevel(employee).jobLevelId === jobLevelId)
-      .map(formatEmployee)
+      .filter(
+        (employee) =>
+          !jobLevelId || inferJobLevel(employee).jobLevelId === jobLevelId,
+      )
+      .map(formatEmployee),
   };
 }
 
@@ -487,11 +509,11 @@ async function getEmployee(employeeId, scope) {
 
   const employee = await prisma.employee.findUnique({
     where: {
-      employeeId
+      employeeId,
     },
     include: {
-      department: true
-    }
+      department: true,
+    },
   });
 
   if (!employee) {
@@ -504,27 +526,27 @@ async function getEmployee(employeeId, scope) {
 async function listSites() {
   const sites = await prisma.site.findMany({
     orderBy: {
-      siteId: "asc"
-    }
+      siteId: "asc",
+    },
   });
 
   return {
-    sites: sites.map(formatSite)
+    sites: sites.map(formatSite),
   };
 }
 
 async function listAccessPoints(siteId) {
   const accessPoints = await prisma.accessPoint.findMany({
     where: {
-      siteId
+      siteId,
     },
     orderBy: {
-      accessPointId: "asc"
-    }
+      accessPointId: "asc",
+    },
   });
 
   return {
-    accessPoints: accessPoints.map(formatAccessPoint)
+    accessPoints: accessPoints.map(formatAccessPoint),
   };
 }
 
@@ -533,12 +555,12 @@ async function listAccessLogs(query, scope) {
     where: buildAccessLogWhere(query, scope),
     include: accessLogInclude(),
     orderBy: {
-      eventTime: "desc"
-    }
+      eventTime: "desc",
+    },
   });
 
   return {
-    logs: logs.map(formatAccessLog)
+    logs: logs.map(formatAccessLog),
   };
 }
 
@@ -546,15 +568,15 @@ async function latestAcceptedLogs(siteId, scope) {
   const logs = await prisma.accessLog.findMany({
     where: {
       employeeId: {
-        in: scope.employeeIds
+        in: scope.employeeIds,
       },
       result: "Accept",
-      ...(siteId ? { siteId } : {})
+      ...(siteId ? { siteId } : {}),
     },
     include: accessLogInclude(),
     orderBy: {
-      eventTime: "desc"
-    }
+      eventTime: "desc",
+    },
   });
   const latestByEmployee = new Map();
 
@@ -575,22 +597,26 @@ async function getAccessStatus(employeeId, query, scope) {
     where: {
       employeeId,
       result: "Accept",
-      ...(siteId ? { siteId } : {})
+      ...(siteId ? { siteId } : {}),
     },
     orderBy: {
-      eventTime: "desc"
-    }
+      eventTime: "desc",
+    },
   });
 
   return {
     employeeId: toNumber(employeeId),
     siteId: toNumber(siteId ?? log?.siteId),
     isInside: String(log?.direction).toUpperCase() === "IN",
-    currentState: log ? (String(log.direction).toUpperCase() === "IN" ? "INSIDE" : "OUTSIDE") : "UNKNOWN",
+    currentState: log
+      ? String(log.direction).toUpperCase() === "IN"
+        ? "INSIDE"
+        : "OUTSIDE"
+      : "UNKNOWN",
     lastLogId: toNumber(log?.logId),
     lastDirection: log?.direction ?? null,
     lastTimestamp: log?.eventTime.toISOString() ?? null,
-    lastAccessPointId: toNumber(log?.accessPointId)
+    lastAccessPointId: toNumber(log?.accessPointId),
   };
 }
 
@@ -623,9 +649,13 @@ function calculateDailyWork(date, logs) {
     workingHours,
     overtimeHours: round(Math.max(0, workingHours - 8)),
     overEightHours: workingHours > 8,
-    isComplete: dayLogs.some((log) => String(log.direction).toUpperCase() === "IN") && !openIn,
+    isComplete:
+      dayLogs.some((log) => String(log.direction).toUpperCase() === "IN") &&
+      !openIn,
     accessEvents: dayLogs.map(formatAccessLog),
-    deniedAccessLogs: dayLogs.filter((log) => String(log.result).toUpperCase() === "DENY").map(formatAccessLog)
+    deniedAccessLogs: dayLogs
+      .filter((log) => String(log.result).toUpperCase() === "DENY")
+      .map(formatAccessLog),
   };
 }
 
@@ -635,13 +665,13 @@ async function getEmployeeLogs(employeeId, start, end) {
       employeeId,
       eventTime: {
         gte: start,
-        lt: end
-      }
+        lt: end,
+      },
     },
     include: accessLogInclude(),
     orderBy: {
-      eventTime: "asc"
-    }
+      eventTime: "asc",
+    },
   });
 }
 
@@ -649,21 +679,29 @@ async function getAttendanceSummary(query, scope) {
   const employeeId = await resolveScopedEmployeeId(query, scope);
   const start = startOfDay(parseDate(query.startDate, new Date()));
   const end = endOfDay(parseDate(query.endDate, start));
-  const logs = await getEmployeeLogs(employeeId, start, new Date(end.getTime() + 1));
+  const logs = await getEmployeeLogs(
+    employeeId,
+    start,
+    new Date(end.getTime() + 1),
+  );
   const dailyRecords = [];
 
   for (let time = start.getTime(); time <= end.getTime(); time += DAY_MS) {
     dailyRecords.push(calculateDailyWork(new Date(time), logs));
   }
 
-  const totalWorkingHours = round(dailyRecords.reduce((sum, record) => sum + record.workingHours, 0));
-  const totalOvertimeHours = round(dailyRecords.reduce((sum, record) => sum + record.overtimeHours, 0));
+  const totalWorkingHours = round(
+    dailyRecords.reduce((sum, record) => sum + record.workingHours, 0),
+  );
+  const totalOvertimeHours = round(
+    dailyRecords.reduce((sum, record) => sum + record.overtimeHours, 0),
+  );
   const incompleteDates = dailyRecords
     .filter((record) => record.accessEvents.length > 0 && !record.isComplete)
     .map((record) => record.date);
   const deniedAccessLogCount = dailyRecords.reduce(
     (sum, record) => sum + record.deniedAccessLogs.length,
-    0
+    0,
   );
 
   return {
@@ -676,29 +714,47 @@ async function getAttendanceSummary(query, scope) {
     message: incompleteDates.length === 0 ? "Complete" : "結果不完整",
     incompleteDates,
     deniedAccessLogCount,
-    accessLogs: logs.map(formatAccessLog)
+    accessLogs: logs.map(formatAccessLog),
   };
 }
 
 async function getDailyAttendance(query, scope) {
   const employeeId = await resolveScopedEmployeeId(query, scope);
   const date = startOfDay(parseDate(query.date, new Date()));
-  const logs = await getEmployeeLogs(employeeId, date, new Date(date.getTime() + DAY_MS));
+  const logs = await getEmployeeLogs(
+    employeeId,
+    date,
+    new Date(date.getTime() + DAY_MS),
+  );
   const daily = calculateDailyWork(date, logs);
 
   return {
     employeeId: toNumber(employeeId),
-    ...daily
+    ...daily,
   };
 }
 
 async function getTodayAttendanceStatus(query, scope) {
   const employeeId = await resolveScopedEmployeeId(query, scope);
   const date = startOfDay(new Date());
-  const logs = await getEmployeeLogs(employeeId, date, new Date(date.getTime() + DAY_MS));
-  const acceptedIn = logs.find((log) => String(log.result).toUpperCase() === "ACCEPT" && String(log.direction).toUpperCase() === "IN");
-  const acceptedOut = logs.findLast?.((log) => String(log.result).toUpperCase() === "ACCEPT" && String(log.direction).toUpperCase() === "OUT");
-  const hasDeniedAccessLog = logs.some((log) => String(log.result).toUpperCase() === "DENY");
+  const logs = await getEmployeeLogs(
+    employeeId,
+    date,
+    new Date(date.getTime() + DAY_MS),
+  );
+  const acceptedIn = logs.find(
+    (log) =>
+      String(log.result).toUpperCase() === "ACCEPT" &&
+      String(log.direction).toUpperCase() === "IN",
+  );
+  const acceptedOut = logs.findLast?.(
+    (log) =>
+      String(log.result).toUpperCase() === "ACCEPT" &&
+      String(log.direction).toUpperCase() === "OUT",
+  );
+  const hasDeniedAccessLog = logs.some(
+    (log) => String(log.result).toUpperCase() === "DENY",
+  );
   const estimatedOffWorkTime = acceptedIn
     ? new Date(acceptedIn.eventTime.getTime() + 8 * 60 * 60 * 1000)
     : null;
@@ -709,11 +765,15 @@ async function getTodayAttendanceStatus(query, scope) {
   return {
     employeeId: toNumber(employeeId),
     hasCheckInToday: Boolean(acceptedIn),
-    estimatedOffWorkTime: acceptedOut ? acceptedOut.eventTime.toISOString() : estimatedOffWorkTime?.toISOString() ?? null,
+    estimatedOffWorkTime: acceptedOut
+      ? acceptedOut.eventTime.toISOString()
+      : (estimatedOffWorkTime?.toISOString() ?? null),
     remainingMinutes: acceptedOut ? 0 : remainingMinutes,
     calculable: Boolean(acceptedIn),
-    message: acceptedIn ? `You have ${acceptedOut ? 0 : remainingMinutes} minutes remaining.` : "目前無法計算",
-    hasDeniedAccessLog
+    message: acceptedIn
+      ? `You have ${acceptedOut ? 0 : remainingMinutes} minutes remaining.`
+      : "目前無法計算",
+    hasDeniedAccessLog,
   };
 }
 
@@ -724,13 +784,13 @@ async function getDeniedAccessLogs(query, scope) {
   const order = toText(query.order)?.toLowerCase() === "asc" ? "asc" : "desc";
   const where = {
     ...buildAccessLogWhere(query, scope),
-    result: "Deny"
+    result: "Deny",
   };
 
   if (reason) {
     where.reason = {
       contains: reason.replaceAll("_", " "),
-      mode: "insensitive"
+      mode: "insensitive",
     };
   }
 
@@ -746,45 +806,52 @@ async function getDeniedAccessLogs(query, scope) {
         ? { employee: { employeeName: order } }
         : sortBy === "reason"
           ? { reason: order }
-          : { eventTime: order }
+          : { eventTime: order },
   });
 
   return {
-    logs: logs.map(formatAccessLog)
+    logs: logs.map(formatAccessLog),
   };
 }
 
 async function getDeniedAccessLogDetail(logId, scope) {
   const deniedAccessLog = await prisma.accessLog.findUnique({
     where: {
-      logId
+      logId,
     },
-    include: accessLogInclude()
+    include: accessLogInclude(),
   });
 
-  if (!deniedAccessLog || String(deniedAccessLog.result).toUpperCase() !== "DENY") {
+  if (
+    !deniedAccessLog ||
+    String(deniedAccessLog.result).toUpperCase() !== "DENY"
+  ) {
     return null;
   }
 
   ensureVisibleEmployee(scope, deniedAccessLog.employeeId);
 
   const { start, end } = eventDayRange(deniedAccessLog.eventTime);
-  const dailyAccessSequence = await getEmployeeLogs(deniedAccessLog.employeeId, start, end);
+  const dailyAccessSequence = await getEmployeeLogs(
+    deniedAccessLog.employeeId,
+    start,
+    end,
+  );
 
   return {
     deniedAccessLog: formatAccessLog(deniedAccessLog),
-    dailyAccessSequence: dailyAccessSequence.map(formatAccessLog)
+    dailyAccessSequence: dailyAccessSequence.map(formatAccessLog),
   };
 }
 
 async function updateAccessLogNote(logId, body, scope) {
   const existingLog = await prisma.accessLog.findUnique({
     where: {
-      logId
+      logId,
     },
     select: {
-      employeeId: true
-    }
+      employeeId: true,
+    },
   });
 
   if (!existingLog) {
@@ -795,12 +862,12 @@ async function updateAccessLogNote(logId, body, scope) {
 
   const log = await prisma.accessLog.update({
     where: {
-      logId
+      logId,
     },
     data: {
-      note: body?.note ?? null
+      note: body?.note ?? null,
     },
-    include: accessLogInclude()
+    include: accessLogInclude(),
   });
 
   return formatAccessLog(log);
@@ -813,12 +880,12 @@ async function updateAccessLogStatus(logId, body, scope) {
 
   const existingLog = await prisma.accessLog.findUnique({
     where: {
-      logId
+      logId,
     },
     select: {
       employeeId: true,
-      result: true
-    }
+      result: true,
+    },
   });
 
   if (!existingLog) {
@@ -826,19 +893,23 @@ async function updateAccessLogStatus(logId, body, scope) {
   }
 
   if (String(existingLog.result).toUpperCase() !== "DENY") {
-    throw new ApiError(400, "BAD_REQUEST", "Only denied access logs can update status.");
+    throw new ApiError(
+      400,
+      "BAD_REQUEST",
+      "Only denied access logs can update status.",
+    );
   }
 
   ensureVisibleEmployee(scope, existingLog.employeeId);
 
   const log = await prisma.accessLog.update({
     where: {
-      logId
+      logId,
     },
     data: {
-      status: body.status
+      status: body.status,
     },
-    include: accessLogInclude()
+    include: accessLogInclude(),
   });
 
   return formatAccessLog(log);
@@ -851,13 +922,15 @@ async function getPresenceSummary(query, scope) {
     prisma.employee.count({
       where: {
         employeeId: {
-          in: scope.employeeIds
+          in: scope.employeeIds,
         },
-        isActive: true
-      }
-    })
+        isActive: true,
+      },
+    }),
   ]);
-  const insideCount = latestLogs.filter((log) => String(log.direction).toUpperCase() === "IN").length;
+  const insideCount = latestLogs.filter(
+    (log) => String(log.direction).toUpperCase() === "IN",
+  ).length;
   const outsideCount = Math.max(0, employeeCount - insideCount);
 
   return {
@@ -867,7 +940,7 @@ async function getPresenceSummary(query, scope) {
     message:
       insideCount > 0
         ? `${insideCount} employees are currently in the office.`
-        : "No employees are currently in the office."
+        : "No employees are currently in the office.",
   };
 }
 
@@ -876,15 +949,25 @@ async function getPresenceEmployees(query, scope) {
   const keyword = toText(query.keyword);
   const jobLevelId = toInt(query.jobLevelId);
   const latestLogs = await latestAcceptedLogs(siteId, scope);
-  const insideLogs = latestLogs.filter((log) => String(log.direction).toUpperCase() === "IN");
+  const insideLogs = latestLogs.filter(
+    (log) => String(log.direction).toUpperCase() === "IN",
+  );
 
   const employees = insideLogs
     .filter((log) => {
       const employee = log.employee;
-      const keywordMatches = !keyword
-        || [employee.employeeName, employee.email, employee.phone, employee.jobTitle]
-          .some((value) => value.toLowerCase().includes(keyword.toLowerCase()));
-      return keywordMatches && (!jobLevelId || inferJobLevel(employee).jobLevelId === jobLevelId);
+      const keywordMatches =
+        !keyword ||
+        [
+          employee.employeeName,
+          employee.email,
+          employee.phone,
+          employee.jobTitle,
+        ].some((value) => value.toLowerCase().includes(keyword.toLowerCase()));
+      return (
+        keywordMatches &&
+        (!jobLevelId || inferJobLevel(employee).jobLevelId === jobLevelId)
+      );
     })
     .map((log) => ({
       employeeId: toNumber(log.employeeId),
@@ -897,7 +980,7 @@ async function getPresenceEmployees(query, scope) {
       departmentName: log.employee.department?.departmentName ?? null,
       siteId: toNumber(log.siteId),
       isInside: true,
-      lastAccessTime: log.eventTime.toISOString()
+      lastAccessTime: log.eventTime.toISOString(),
     }));
 
   return {
@@ -905,7 +988,7 @@ async function getPresenceEmployees(query, scope) {
     message:
       employees.length > 0
         ? `${employees.length} employees are currently in the office.`
-        : "No employees are currently in the office."
+        : "No employees are currently in the office.",
   };
 }
 
@@ -914,13 +997,17 @@ async function getMonthlyAttendanceReport(employeeId, query, scope) {
 
   const yearMonth = parseYearMonth(query.yearMonth);
   if (!yearMonth) {
-    throw new ApiError(400, "BAD_REQUEST", "yearMonth must use YYYY-MM format.");
+    throw new ApiError(
+      400,
+      "BAD_REQUEST",
+      "yearMonth must use YYYY-MM format.",
+    );
   }
 
   const employee = await prisma.employee.findUnique({
     where: {
-      employeeId
-    }
+      employeeId,
+    },
   });
   if (!employee) {
     return null;
@@ -934,10 +1021,16 @@ async function getMonthlyAttendanceReport(employeeId, query, scope) {
     dailyRecords.push(calculateDailyWork(new Date(time), logs));
   }
 
-  const activeRecords = dailyRecords.filter((record) => record.accessEvents.length > 0);
+  const activeRecords = dailyRecords.filter(
+    (record) => record.accessEvents.length > 0,
+  );
   const divisor = activeRecords.length || dailyRecords.length || 1;
-  const totalWorkingHours = round(dailyRecords.reduce((sum, record) => sum + record.workingHours, 0));
-  const totalOvertimeHours = round(dailyRecords.reduce((sum, record) => sum + record.overtimeHours, 0));
+  const totalWorkingHours = round(
+    dailyRecords.reduce((sum, record) => sum + record.workingHours, 0),
+  );
+  const totalOvertimeHours = round(
+    dailyRecords.reduce((sum, record) => sum + record.overtimeHours, 0),
+  );
   const averageDailyWorkingHours = round(totalWorkingHours / divisor);
   const averageDailyOvertimeHours = round(totalOvertimeHours / divisor);
 
@@ -950,7 +1043,7 @@ async function getMonthlyAttendanceReport(employeeId, query, scope) {
     averageDailyWorkingHours,
     averageDailyOvertimeHours,
     overtimeWarning: averageDailyOvertimeHours > 1,
-    dailyRecords
+    dailyRecords,
   };
 }
 
@@ -958,38 +1051,40 @@ async function allDailyWorkRecords(start, end, scope, options = {}) {
   const employees = await prisma.employee.findMany({
     where: {
       employeeId: {
-        in: scope.employeeIds
+        in: scope.employeeIds,
       },
       departmentId: {
-        in: options.departmentIds ?? scope.departmentIds
+        in: options.departmentIds ?? scope.departmentIds,
       },
-      isActive: true
+      isActive: true,
     },
     orderBy: {
-      employeeId: "asc"
-    }
+      employeeId: "asc",
+    },
   });
   const employeeIds = employees.map((employee) => employee.employeeId);
   const logs = employeeIds.length
     ? await prisma.accessLog.findMany({
-      where: {
-        employeeId: {
-          in: employeeIds
+        where: {
+          employeeId: {
+            in: employeeIds,
+          },
+          eventTime: {
+            gte: start,
+            lt: end,
+          },
         },
-        eventTime: {
-          gte: start,
-          lt: end
-        }
-      },
-      include: accessLogInclude(),
-      orderBy: {
-        eventTime: "asc"
-      }
-    })
+        include: accessLogInclude(),
+        orderBy: {
+          eventTime: "asc",
+        },
+      })
     : [];
 
   return employees.map((employee) => {
-    const employeeLogs = logs.filter((log) => log.employeeId === employee.employeeId);
+    const employeeLogs = logs.filter(
+      (log) => log.employeeId === employee.employeeId,
+    );
     const dailyRecords = [];
 
     for (let time = start.getTime(); time < end.getTime(); time += DAY_MS) {
@@ -1003,33 +1098,52 @@ async function allDailyWorkRecords(start, end, scope, options = {}) {
 async function getTeamMonthlyStatistics(query, scope) {
   const yearMonth = parseYearMonth(query.yearMonth);
   if (!yearMonth) {
-    throw new ApiError(400, "BAD_REQUEST", "yearMonth must use YYYY-MM format.");
+    throw new ApiError(
+      400,
+      "BAD_REQUEST",
+      "yearMonth must use YYYY-MM format.",
+    );
   }
 
   const { start, end } = monthRange(yearMonth);
   const recordsByEmployee = await allDailyWorkRecords(start, end, scope, {
-    departmentIds: scopedDepartmentIds(query, scope)
+    departmentIds: scopedDepartmentIds(query, scope),
   });
   const employeeCount = recordsByEmployee.length;
   const activeRecords = recordsByEmployee.flatMap((item) =>
-    item.dailyRecords.filter((record) => record.accessEvents.length > 0)
+    item.dailyRecords.filter((record) => record.accessEvents.length > 0),
   );
   const activeDates = new Set(activeRecords.map((record) => record.date));
-  const totalWorkingHours = activeRecords.reduce((sum, record) => sum + record.workingHours, 0);
+  const totalWorkingHours = activeRecords.reduce(
+    (sum, record) => sum + record.workingHours,
+    0,
+  );
   const averageDailyStayHours = activeRecords.length
     ? round(totalWorkingHours / (employeeCount * activeDates.size || 1))
     : 0;
   const checkIns = activeRecords
-    .map((record) => record.accessEvents.find((log) => log.result === "ACCEPT" && log.direction === "IN"))
+    .map((record) =>
+      record.accessEvents.find(
+        (log) => log.result === "ACCEPT" && log.direction === "IN",
+      ),
+    )
     .filter(Boolean)
     .map((log) => new Date(log.eventTime));
   const checkOuts = activeRecords
-    .map((record) => [...record.accessEvents].reverse().find((log) => log.result === "ACCEPT" && log.direction === "OUT"))
+    .map((record) =>
+      [...record.accessEvents]
+        .reverse()
+        .find((log) => log.result === "ACCEPT" && log.direction === "OUT"),
+    )
     .filter(Boolean)
     .map((log) => new Date(log.eventTime));
   const averageTime = (dates) => {
     if (!dates.length) return null;
-    const minutes = dates.reduce((sum, date) => sum + date.getUTCHours() * 60 + date.getUTCMinutes(), 0) / dates.length;
+    const minutes =
+      dates.reduce(
+        (sum, date) => sum + date.getUTCHours() * 60 + date.getUTCMinutes(),
+        0,
+      ) / dates.length;
     const hour = String(Math.floor(minutes / 60)).padStart(2, "0");
     const minute = String(Math.round(minutes % 60)).padStart(2, "0");
     return `${hour}:${minute}`;
@@ -1046,53 +1160,75 @@ async function getTeamMonthlyStatistics(query, scope) {
     averageCheckInTime: averageTime(checkIns),
     averageCheckInTimeDiffMinutes: 0,
     averageCheckOutTime: averageTime(checkOuts),
-    averageCheckOutTimeDiffMinutes: 0
+    averageCheckOutTimeDiffMinutes: 0,
   };
 }
 
 async function getTeamWorkloadTrend(query, scope) {
   const year = toInt(query.year) ?? new Date().getUTCFullYear();
-  const periodType = toText(query.periodType)?.toUpperCase() === "YEARLY" ? "YEARLY" : "QUARTERLY";
-  const periods = periodType === "YEARLY"
-    ? [{ label: String(year), start: new Date(Date.UTC(year, 0, 1)), end: new Date(Date.UTC(year + 1, 0, 1)) }]
-    : [0, 1, 2, 3].map((quarter) => ({
-      label: `${year}-Q${quarter + 1}`,
-      start: new Date(Date.UTC(year, quarter * 3, 1)),
-      end: new Date(Date.UTC(year, quarter * 3 + 3, 1))
-    }));
+  const periodType =
+    toText(query.periodType)?.toUpperCase() === "YEARLY"
+      ? "YEARLY"
+      : "QUARTERLY";
+  const periods =
+    periodType === "YEARLY"
+      ? [
+          {
+            label: String(year),
+            start: new Date(Date.UTC(year, 0, 1)),
+            end: new Date(Date.UTC(year + 1, 0, 1)),
+          },
+        ]
+      : [0, 1, 2, 3].map((quarter) => ({
+          label: `${year}-Q${quarter + 1}`,
+          start: new Date(Date.UTC(year, quarter * 3, 1)),
+          end: new Date(Date.UTC(year, quarter * 3 + 3, 1)),
+        }));
 
   const data = [];
   const departmentIds = scopedDepartmentIds(query, scope);
   for (const period of periods) {
-    const recordsByEmployee = await allDailyWorkRecords(period.start, period.end, scope, {
-      departmentIds
-    });
+    const recordsByEmployee = await allDailyWorkRecords(
+      period.start,
+      period.end,
+      scope,
+      {
+        departmentIds,
+      },
+    );
     const records = recordsByEmployee.flatMap((item) =>
-      item.dailyRecords.filter((record) => record.accessEvents.length > 0)
+      item.dailyRecords.filter((record) => record.accessEvents.length > 0),
     );
     data.push({
       period: period.label,
       averageStayHours: records.length
-        ? round(records.reduce((sum, record) => sum + record.workingHours, 0) / records.length)
-        : 0
+        ? round(
+            records.reduce((sum, record) => sum + record.workingHours, 0) /
+              records.length,
+          )
+        : 0,
     });
   }
 
   return {
     periodType,
-    data
+    data,
   };
 }
 
 async function getStayHourDistribution(query, scope) {
   const yearMonth = parseYearMonth(query.yearMonth);
   if (!yearMonth) {
-    throw new ApiError(400, "BAD_REQUEST", "yearMonth must use YYYY-MM format.");
+    throw new ApiError(
+      400,
+      "BAD_REQUEST",
+      "yearMonth must use YYYY-MM format.",
+    );
   }
 
   const { start, end } = monthRange(yearMonth);
   const recordsByEmployee = await allDailyWorkRecords(start, end, scope, {
-    departmentIds: scopedDepartmentIds(query, scope)
+    departmentIds: scopedDepartmentIds(query, scope),
   });
   const employeeCount = recordsByEmployee.length;
   const dailyAverages = [];
@@ -1102,22 +1238,28 @@ async function getStayHourDistribution(query, scope) {
     const records = recordsByEmployee
       .map((item) => item.dailyRecords.find((record) => record.date === date))
       .filter(Boolean);
-    const totalStayHours = round(records.reduce((sum, record) => sum + record.workingHours, 0));
-    const activeEmployeeCount = records.filter((record) => record.accessEvents.length > 0).length;
+    const totalStayHours = round(
+      records.reduce((sum, record) => sum + record.workingHours, 0),
+    );
+    const activeEmployeeCount = records.filter(
+      (record) => record.accessEvents.length > 0,
+    ).length;
 
     dailyAverages.push({
       date,
-      averageStayHours: employeeCount ? round(totalStayHours / employeeCount) : 0,
+      averageStayHours: employeeCount
+        ? round(totalStayHours / employeeCount)
+        : 0,
       totalStayHours,
       employeeCount,
-      activeEmployeeCount
+      activeEmployeeCount,
     });
   }
 
   return {
     yearMonth: yearMonth.text,
     employeeCount,
-    dailyAverages
+    dailyAverages,
   };
 }
 
@@ -1128,12 +1270,18 @@ function jobLevels() {
       { jobLevelId: 2, jobLevelName: "Manager", level: 2 },
       { jobLevelId: 3, jobLevelName: "Engineer", level: 3 },
       { jobLevelId: 4, jobLevelName: "Staff", level: 4 },
-      { jobLevelId: 5, jobLevelName: "Intern", level: 5 }
-    ]
+      { jobLevelId: 5, jobLevelName: "Intern", level: 5 },
+    ],
   };
 }
 
-export async function handleAccessApiRequest({ method, path, query, body, currentUser }) {
+export async function handleAccessApiRequest({
+  method,
+  path,
+  query,
+  body,
+  currentUser,
+}) {
   if (!currentUser) {
     throw new ApiError(401, "UNAUTHORIZED", "Please login first.");
   }
@@ -1142,50 +1290,116 @@ export async function handleAccessApiRequest({ method, path, query, body, curren
   const joined = `/${segments.join("/")}`;
   const scope = await getVisibleEmployeeScope(currentUser);
 
-  if (method === "GET" && joined === "/departments") return listDepartments(scope);
-  if (method === "GET" && joined === "/employees") return listEmployees(query, scope);
-  if (method === "GET" && segments[0] === "employees" && segments.length === 2) {
+  if (method === "GET" && joined === "/departments")
+    return listDepartments(scope);
+  if (method === "GET" && joined === "/employees")
+    return listEmployees(query, scope);
+  if (
+    method === "GET" &&
+    segments[0] === "employees" &&
+    segments.length === 2
+  ) {
     return getEmployee(toBigInt(segments[1]), scope);
   }
   if (method === "GET" && joined === "/job-levels") return jobLevels();
   if (method === "GET" && joined === "/sites") return listSites();
-  if (method === "GET" && segments[0] === "sites" && segments[2] === "access-points") {
+  if (
+    method === "GET" &&
+    segments[0] === "sites" &&
+    segments[2] === "access-points"
+  ) {
     return listAccessPoints(toBigInt(segments[1]));
   }
-  if (method === "GET" && joined === "/access-logs") return listAccessLogs(query, scope);
-  if (method === "GET" && segments[0] === "employees" && segments[2] === "access-status") {
+  if (method === "GET" && joined === "/access-logs")
+    return listAccessLogs(query, scope);
+  if (
+    method === "GET" &&
+    segments[0] === "employees" &&
+    segments[2] === "access-status"
+  ) {
     return getAccessStatus(toBigInt(segments[1]), query, scope);
   }
   if (method === "GET" && joined === "/me/attendance/summary") {
-    return getAttendanceSummary({ ...query, employeeId: toNumber(scope.currentEmployeeId) }, scope);
+    return getAttendanceSummary(
+      { ...query, employeeId: toNumber(scope.currentEmployeeId) },
+      scope,
+    );
   }
   if (method === "GET" && joined === "/me/attendance/daily") {
-    return getDailyAttendance({ ...query, employeeId: toNumber(scope.currentEmployeeId) }, scope);
+    return getDailyAttendance(
+      { ...query, employeeId: toNumber(scope.currentEmployeeId) },
+      scope,
+    );
   }
   if (method === "GET" && joined === "/me/attendance/today-status") {
-    return getTodayAttendanceStatus({ employeeId: toNumber(scope.currentEmployeeId) }, scope);
+    return getTodayAttendanceStatus(
+      { employeeId: toNumber(scope.currentEmployeeId) },
+      scope,
+    );
   }
   if (method === "GET" && joined === "/me/attendance/denied-access-logs") {
-    return listAccessLogs({ ...query, employeeId: toNumber(scope.currentEmployeeId), result: "Deny" }, scope);
+    return listAccessLogs(
+      {
+        ...query,
+        employeeId: toNumber(scope.currentEmployeeId),
+        result: "Deny",
+      },
+      scope,
+    );
   }
-  if (method === "GET" && joined === "/manager/reports/presence/summary") return getPresenceSummary(query, scope);
-  if (method === "GET" && joined === "/manager/reports/presence/employees") return getPresenceEmployees(query, scope);
-  if (method === "GET" && segments[0] === "manager" && segments[1] === "reports" && segments[2] === "employees" && segments[4] === "monthly-attendance") {
+  if (method === "GET" && joined === "/manager/reports/presence/summary")
+    return getPresenceSummary(query, scope);
+  if (method === "GET" && joined === "/manager/reports/presence/employees")
+    return getPresenceEmployees(query, scope);
+  if (
+    method === "GET" &&
+    segments[0] === "manager" &&
+    segments[1] === "reports" &&
+    segments[2] === "employees" &&
+    segments[4] === "monthly-attendance"
+  ) {
     return getMonthlyAttendanceReport(toBigInt(segments[3]), query, scope);
   }
-  if (method === "GET" && joined === "/manager/reports/team/workload-trend") return getTeamWorkloadTrend(query, scope);
-  if (method === "GET" && joined === "/manager/reports/team/monthly-statistics") return getTeamMonthlyStatistics(query, scope);
-  if (method === "GET" && joined === "/manager/reports/team/stay-hour-distribution") return getStayHourDistribution(query, scope);
-  if (method === "GET" && joined === "/manager/reports/denied-access-logs") return getDeniedAccessLogs(query, scope);
-  if (method === "GET" && segments[0] === "manager" && segments[1] === "reports" && segments[2] === "denied-access-logs" && segments.length === 4) {
+  if (method === "GET" && joined === "/manager/reports/team/workload-trend")
+    return getTeamWorkloadTrend(query, scope);
+  if (method === "GET" && joined === "/manager/reports/team/monthly-statistics")
+    return getTeamMonthlyStatistics(query, scope);
+  if (
+    method === "GET" &&
+    joined === "/manager/reports/team/stay-hour-distribution"
+  )
+    return getStayHourDistribution(query, scope);
+  if (method === "GET" && joined === "/manager/reports/denied-access-logs")
+    return getDeniedAccessLogs(query, scope);
+  if (
+    method === "GET" &&
+    segments[0] === "manager" &&
+    segments[1] === "reports" &&
+    segments[2] === "denied-access-logs" &&
+    segments.length === 4
+  ) {
     return getDeniedAccessLogDetail(toBigInt(segments[3]), scope);
   }
-  if (method === "PATCH" && segments[0] === "manager" && segments[1] === "access-logs" && segments[3] === "note") {
+  if (
+    method === "PATCH" &&
+    segments[0] === "manager" &&
+    segments[1] === "access-logs" &&
+    segments[3] === "note"
+  ) {
     return updateAccessLogNote(toBigInt(segments[2]), body, scope);
   }
-  if (method === "PATCH" && segments[0] === "manager" && segments[1] === "access-logs" && segments[3] === "status") {
+  if (
+    method === "PATCH" &&
+    segments[0] === "manager" &&
+    segments[1] === "access-logs" &&
+    segments[3] === "status"
+  ) {
     return updateAccessLogStatus(toBigInt(segments[2]), body, scope);
   }
 
-  throw new ApiError(404, "NOT_FOUND", `No report API route for ${method} ${joined}`);
+  throw new ApiError(
+    404,
+    "NOT_FOUND",
+    `No report API route for ${method} ${joined}`,
+  );
 }

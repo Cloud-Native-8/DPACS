@@ -64,13 +64,13 @@ function toDbResult(value) {
 }
 
 function toEventTime(value) {
-  const date = new Date(value);
+  const parsed = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (Number.isNaN(parsed.getTime())) {
     throw new AccessEventValidationError("occurredAt must be a valid datetime");
   }
 
-  return date;
+  return new Date(parsed.getTime() + 8 * 60 * 60 * 1000);
 }
 
 function isNonRetryableMessageError(error) {

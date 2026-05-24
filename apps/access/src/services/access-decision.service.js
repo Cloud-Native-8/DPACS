@@ -38,7 +38,7 @@ export function evaluateAntiPassback(request, previousState) {
     if (!isEntry) {
       return {
         allowed: false,
-        reason: "Anti-passback blocked: employee is not marked inside any site",
+        reason: "employee is not marked inside any site",
       };
     }
 
@@ -53,14 +53,14 @@ export function evaluateAntiPassback(request, previousState) {
   if (isEntry) {
     return {
       allowed: false,
-      reason: `Anti-passback blocked: employee must exit site ${previousState.site_id} before any new entry`,
+      reason: `employee must exit site ${previousState.site_id} before any new entry`,
     };
   }
 
   if (!sameFactory) {
     return {
       allowed: false,
-      reason: `Anti-passback blocked: employee must exit the same site they entered (${previousState.site_id})`,
+      reason: `employee must exit the same site they entered (${previousState.site_id})`,
     };
   }
 
@@ -68,6 +68,12 @@ export function evaluateAntiPassback(request, previousState) {
     allowed: true,
     reason: "Access granted",
   };
+}
+
+function toUtcPlus8Iso(date = new Date()) {
+  const utc8 = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+  console.log(utc8);
+  return utc8.toISOString().replace("Z", "+08:00");
 }
 
 export async function evaluateAccessRequest(payload) {
@@ -102,7 +108,7 @@ export async function evaluateAccessRequest(payload) {
     access_point_id: request.access_point_id,
     site_id: request.site_id,
     direction: request.direction,
-    processedAt: new Date().toISOString(),
+    processedAt: toUtcPlus8Iso(),
   };
 
   const event = createAccessCheckedEvent(request, result);
