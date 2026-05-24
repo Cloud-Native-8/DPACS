@@ -14,10 +14,7 @@ test("first access event must be an entry", () => {
   );
 
   assert.equal(decision.allowed, false);
-  assert.equal(
-    decision.reason,
-    "Anti-passback blocked: employee is not marked inside any site",
-  );
+  assert.equal(decision.reason, "employee is not marked inside any site");
 });
 
 test("employee already inside a site cannot enter again", () => {
@@ -38,7 +35,7 @@ test("employee already inside a site cannot enter again", () => {
   assert.equal(decision.allowed, false);
   assert.equal(
     decision.reason,
-    "Anti-passback blocked: employee must exit site 1 before any new entry",
+    "employee must exit site 1 before any new entry",
   );
 });
 
