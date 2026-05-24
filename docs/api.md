@@ -182,6 +182,8 @@ Denied access log responses include `status` when `result` is `DENY`:
 - `status: false`: denied log is pending report handling
 - `status: true`: denied log has been handled
 
+Access log `logId` is returned as a string because worker-generated ids can exceed JavaScript's safe integer range.
+
 Update denied access log handling status:
 
 ```http
@@ -224,7 +226,7 @@ Response includes:
   "deniedAccessLogCount": 1,
   "accessLogs": [
     {
-      "logId": 1,
+      "logId": "1",
       "employeeId": 2,
       "direction": "IN",
       "result": "ACCEPT",
