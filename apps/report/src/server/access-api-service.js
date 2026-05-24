@@ -15,8 +15,17 @@ function toInt(value) {
 }
 
 function toBigInt(value) {
-  const parsed = toInt(value);
-  return parsed === undefined ? undefined : BigInt(parsed);
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+
+  const text = String(Array.isArray(value) ? value[0] : value).trim();
+
+  if (!/^\d+$/.test(text)) {
+    return undefined;
+  }
+
+  return BigInt(text);
 }
 
 function toNumber(value) {
@@ -255,7 +264,7 @@ function formatAccessLog(log) {
   const result = String(log.result).toUpperCase() === "DENY" ? "DENY" : "ACCEPT";
 
   return {
-    logId: toNumber(log.logId),
+    logId: log.logId.toString(),
     employeeId: toNumber(log.employeeId),
     employeeName: log.employee?.employeeName,
     siteId: toNumber(log.siteId),

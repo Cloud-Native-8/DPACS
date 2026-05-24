@@ -13,9 +13,9 @@ const ids = {
   outsideEmployee: 910004n,
   site: 910001n,
   accessPoint: 910001n,
-  acceptedLog: 910001n,
-  deniedLog: 910002n,
-  outsideDeniedLog: 910003n
+  acceptedLog: 1779628838152916801n,
+  deniedLog: 1779628838152916802n,
+  outsideDeniedLog: 1779628838152916803n
 };
 
 async function loadTestTarget(t) {
@@ -266,7 +266,7 @@ test("manager report APIs enforce department scope and update denied status", as
   });
   assert.deepEqual(
     deniedLogs.logs.map((log) => log.logId),
-    [Number(ids.deniedLog)]
+    [ids.deniedLog.toString()]
   );
   assert.equal(deniedLogs.logs[0].status, false);
 
