@@ -20,9 +20,6 @@ const getDefaultDateRange = (today = new Date()) => ({
   end: getDateInputValue(today)
 });
 
-// Preview data for UI checks. Uncomment buildPreviewSummary usage below when needed.
-// const toIsoAt = (dateKey, time) => `${dateKey}T${time}:00+08:00`;
-
 const toShortDate = (dateKey) => {
   const [, month, day] = dateKey.split("-");
   return `${month}/${day}`;
@@ -42,6 +39,29 @@ const formatHours = (value) => {
 const formatRemainingHours = (minutes) => {
   if (minutes === undefined || minutes === null) return "-";
   return String(Math.round((minutes / 60) * 10) / 10);
+};
+
+const formatAnomalyReason = (reason) => {
+  if (!reason) return "";
+
+  const text = String(reason);
+  const normalized = text.toLowerCase().replaceAll("_", " ");
+
+  if (normalized.includes("employee is not marked inside any site")) {
+    return "沒有進入任何場域的紀錄";
+  }
+
+  const duplicateEntryMatch = normalized.match(/employee must exit site (\d+) before any new entry/);
+  if (duplicateEntryMatch) {
+    return `需先離開場域 ${duplicateEntryMatch[1]} 才能再次進入`;
+  }
+
+  const sameSiteExitMatch = normalized.match(/employee must exit the same site they entered \((\d+)\)/);
+  if (sameSiteExitMatch) {
+    return `需從原本進入的同一場域 ${sameSiteExitMatch[1]} 離開`;
+  }
+
+  return text;
 };
 
 const getLogDate = (log) => {
@@ -86,7 +106,7 @@ const toDeniedRow = (log, date) => {
     date,
     inTimes: direction === "IN" && time ? [time] : [],
     outTimes: direction === "OUT" && time ? [time] : [],
-    anomaly: log.reason ?? "DENY",
+    anomaly: formatAnomalyReason(log.reason),
     isAnomaly: true
   };
 };
@@ -144,76 +164,6 @@ const getCellClassName = (row, extraClassName = "") =>
     .filter(Boolean)
     .join(" ");
 
-// const buildPreviewSummary = (dateRange) => {
-//   const end = new Date(`${dateRange.end}T00:00:00`);
-//   const firstDate = getDateInputValue(addDays(end, -2));
-//   const secondDate = getDateInputValue(addDays(end, -1));
-//   const thirdDate = dateRange.end;
-//
-//   return {
-//     totalWorkingHours: 22.5,
-//     totalOvertimeHours: 1.5,
-//     accessLogs: [
-//       {
-//         logId: "preview-1",
-//         direction: "IN",
-//         result: "ACCEPT",
-//         reason: "ACCESS_GRANTED",
-//         eventTime: toIsoAt(firstDate, "09:00"),
-//         note: ""
-//       },
-//       {
-//         logId: "preview-2",
-//         direction: "IN",
-//         result: "DENY",
-//         reason: "ACCESS_LEVEL_DENIED",
-//         eventTime: toIsoAt(firstDate, "09:01"),
-//         note: "Access level denied."
-//       },
-//       {
-//         logId: "preview-3",
-//         direction: "OUT",
-//         result: "ACCEPT",
-//         reason: "ACCESS_GRANTED",
-//         eventTime: toIsoAt(firstDate, "18:00"),
-//         note: ""
-//       },
-//       {
-//         logId: "preview-4",
-//         direction: "IN",
-//         result: "ACCEPT",
-//         reason: "ACCESS_GRANTED",
-//         eventTime: toIsoAt(secondDate, "08:30"),
-//         note: ""
-//       },
-//       {
-//         logId: "preview-5",
-//         direction: "OUT",
-//         result: "ACCEPT",
-//         reason: "ACCESS_GRANTED",
-//         eventTime: toIsoAt(secondDate, "17:30"),
-//         note: ""
-//       },
-//       {
-//         logId: "preview-6",
-//         direction: "IN",
-//         result: "ACCEPT",
-//         reason: "ACCESS_GRANTED",
-//         eventTime: toIsoAt(thirdDate, "09:00"),
-//         note: ""
-//       },
-//       {
-//         logId: "preview-8",
-//         direction: "OUT",
-//         result: "ACCEPT",
-//         reason: "ACCESS_GRANTED",
-//         eventTime: toIsoAt(thirdDate, "18:10"),
-//         note: ""
-//       }
-//     ]
-//   };
-// };
-
 const KpiCard = ({ label, value, tone = "blue" }) => {
   const toneClass = tone === "violet" ? "bg-violet-50" : "bg-sky-50";
 
@@ -253,8 +203,6 @@ export default function AttendanceQueryPage() {
     ])
       .then(([todayData, summaryData]) => {
         if (!isMounted) return;
-        console.log("/api/me/attendance/today-status", todayData);
-        console.log("/api/me/attendance/summary", summaryData);
         setTodayStatus(todayData);
         setSummary(summaryData);
       })
@@ -364,7 +312,13 @@ export default function AttendanceQueryPage() {
               </div>
 
               <div className="overflow-x-auto px-6 pb-8">
-                <table className="min-w-full border-separate border-spacing-y-0">
+                <table className="w-full min-w-[760px] table-fixed border-separate border-spacing-y-0">
+                  <colgroup>
+                    <col className="w-[16%]" />
+                    <col className="w-[22%]" />
+                    <col className="w-[22%]" />
+                    <col className="w-[40%]" />
+                  </colgroup>
                   <thead>
                     <tr className="text-left text-xs font-medium text-slate-500">
                       <th className="px-4 py-2">日期</th>
@@ -414,7 +368,7 @@ export default function AttendanceQueryPage() {
                         </td>
                         <td className={getCellClassName(row, "rounded-r-2xl")}>
                           {row.anomaly ? (
-                            <span className="text-red-400">{row.anomaly}</span>
+                            <span className="break-words text-red-400">{row.anomaly}</span>
                           ) : null}
                         </td>
                       </tr>
