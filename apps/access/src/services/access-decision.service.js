@@ -72,7 +72,6 @@ export function evaluateAntiPassback(request, previousState) {
 
 function toUtcPlus8Iso(date = new Date()) {
   const utc8 = new Date(date.getTime() + 8 * 60 * 60 * 1000);
-  console.log(utc8);
   return utc8.toISOString().replace("Z", "+08:00");
 }
 

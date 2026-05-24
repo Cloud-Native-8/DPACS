@@ -125,7 +125,7 @@ model AccessLog {
   result        String    @db.VarChar(10)
   status        Boolean?
   reason        String?
-  eventTime     DateTime  @map("event_time") @db.Timestamp(6)
+  eventTime DateTime @map("event_time") @db.Timestamptz(6)
   note          String?
   createdAt     DateTime? @map("created_at") @db.Timestamp(6)
 
