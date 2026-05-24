@@ -1,4 +1,7 @@
 import { prisma } from "@repo/db/client";
+import { ApiError } from "./api-error.js";
+
+export { ApiError };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -1128,14 +1131,6 @@ function jobLevels() {
       { jobLevelId: 5, jobLevelName: "Intern", level: 5 }
     ]
   };
-}
-
-export class ApiError extends Error {
-  constructor(status, code, message) {
-    super(message);
-    this.status = status;
-    this.code = code;
-  }
 }
 
 export async function handleAccessApiRequest({ method, path, query, body, currentUser }) {
