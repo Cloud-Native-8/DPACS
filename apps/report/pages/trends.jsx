@@ -70,7 +70,7 @@ const DepartmentSelect = ({ departments, value, onChange }) => {
         onChange={(event) => onChange(event.target.value)}
         className="h-11 min-w-44 appearance-none rounded-2xl border-0 bg-slate-100 py-0 pl-5 pr-14 text-sm font-medium leading-none text-slate-900 outline-none transition hover:bg-slate-200 focus:ring-2 focus:ring-slate-300 disabled:text-slate-400"
       >
-        <option value="company">Company</option>
+        <option value="company">All</option>
         {hasDepartments ? (
           selectableDepartments.map((department) => (
             <option key={department.departmentId} value={department.departmentId}>
