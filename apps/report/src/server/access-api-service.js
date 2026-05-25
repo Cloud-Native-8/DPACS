@@ -779,11 +779,6 @@ async function getTodayAttendanceStatus(query, scope) {
       String(log.result).toUpperCase() === "ACCEPT" &&
       String(log.direction).toUpperCase() === "IN",
   );
-  const acceptedOut = logs.findLast?.(
-    (log) =>
-      String(log.result).toUpperCase() === "ACCEPT" &&
-      String(log.direction).toUpperCase() === "OUT",
-  );
   const hasDeniedAccessLog = logs.some(
     (log) => String(log.result).toUpperCase() === "DENY",
   );
@@ -797,13 +792,11 @@ async function getTodayAttendanceStatus(query, scope) {
   return {
     employeeId: toNumber(employeeId),
     hasCheckInToday: Boolean(acceptedIn),
-    estimatedOffWorkTime: acceptedOut
-      ? acceptedOut.eventTime.toISOString()
-      : (estimatedOffWorkTime?.toISOString() ?? null),
-    remainingMinutes: acceptedOut ? 0 : remainingMinutes,
+    estimatedOffWorkTime: estimatedOffWorkTime?.toISOString() ?? null,
+    remainingMinutes,
     calculable: Boolean(acceptedIn),
     message: acceptedIn
-      ? `You have ${acceptedOut ? 0 : remainingMinutes} minutes remaining.`
+      ? `You have ${remainingMinutes} minutes remaining.`
       : "目前無法計算",
     hasDeniedAccessLog,
   };
