@@ -1,120 +1,178 @@
 name: deploy-test
 
 on:
-    workflow_dispatch:
-        inputs:
-            image_tag:
-                description: "Image tag to deploy, usually the Git commit SHA pushed by ci.yaml"
-                required: true
-                type: string
+  workflow_dispatch:
+    inputs:
+      access_tag:
+        description: "Optional access image tag to deploy"
+        required: false
+        default: ""
+        type: string
+      worker_tag:
+        description: "Optional worker image tag to deploy"
+        required: false
+        default: ""
+        type: string
+      report_tag:
+        description: "Optional report image tag to deploy"
+        required: false
+        default: ""
+        type: string
+      db_migrate_tag:
+        description: "Optional db-migrate image tag to run before app rollout"
+        required: false
+        default: ""
+        type: string
 
 permissions:
-    contents: read
-    id-token: write
+  contents: read
+  id-token: write
 
 env:
-    AWS_REGION: ${{ vars.AWS_REGION }}
-    EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
-    ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
-    ECR_NAMESPACE: ${{ vars.ECR_NAMESPACE }}
-    IMAGE_TAG: ${{ inputs.image_tag }}
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  ECR_NAMESPACE: ${{ vars.ECR_NAMESPACE }}
+  ACCESS_TAG: ${{ inputs.access_tag }}
+  WORKER_TAG: ${{ inputs.worker_tag }}
+  REPORT_TAG: ${{ inputs.report_tag }}
+  DB_MIGRATE_TAG: ${{ inputs.db_migrate_tag }}
 
 jobs:
-    deploy-test:
-        runs-on: ubuntu-latest
-        concurrency:
-            group: deploy-test
-            cancel-in-progress: false
+  deploy-test:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-test
+      cancel-in-progress: false
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
-            - name: Configure AWS credentials
-              uses: aws-actions/configure-aws-credentials@v6
-              with:
-                  aws-region: ${{ env.AWS_REGION }}
-                  role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+      - name: Validate requested targets
+        run: |
+          set -euo pipefail
 
-            - name: Show AWS identity
-              run: |
-                  aws sts get-caller-identity
+          if [[ -z "$ACCESS_TAG" && -z "$WORKER_TAG" && -z "$REPORT_TAG" && -z "$DB_MIGRATE_TAG" ]]; then
+            echo "At least one of access_tag, worker_tag, report_tag, or db_migrate_tag must be provided." >&2
+            exit 1
+          fi
 
-            - name: Verify images exist in ECR
-              run: |
-                  set -euo pipefail
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
 
-                  for image in access worker report db-migrate; do
-                    echo "Checking $ECR_NAMESPACE/$image:$IMAGE_TAG"
+      - name: Show AWS identity
+        run: aws sts get-caller-identity
 
-                    aws ecr describe-images \
-                      --region "$AWS_REGION" \
-                      --repository-name "$ECR_NAMESPACE/$image" \
-                      --image-ids imageTag="$IMAGE_TAG" \
-                      > /dev/null
+      - name: Verify requested images exist in ECR
+        run: |
+          set -euo pipefail
 
-                    echo "Found $ECR_NAMESPACE/$image:$IMAGE_TAG"
-                  done
+          check_image() {
+            local image="$1"
+            local tag="$2"
 
-            - name: Update kubeconfig
-              run: |
-                  aws eks update-kubeconfig \
-                    --region "$AWS_REGION" \
-                    --name "$EKS_CLUSTER_NAME"
+            if [[ -z "$tag" ]]; then
+              return 0
+            fi
 
-            - name: Apply base manifests
-              run: |
-                  kubectl apply -f deploy/k8s/test/00-namespace.yaml
-                  kubectl apply -f deploy/k8s/test/01-configmap.yaml
-                  kubectl apply -f deploy/k8s/test/03-serviceaccounts.yaml
+            echo "Checking $ECR_NAMESPACE/$image:$tag"
+            aws ecr describe-images \
+              --region "$AWS_REGION" \
+              --repository-name "$ECR_NAMESPACE/$image" \
+              --image-ids imageTag="$tag" \
+              > /dev/null
+            echo "Found $ECR_NAMESPACE/$image:$tag"
+          }
 
-            - name: Run database migration
-              run: |
-                  set -euo pipefail
+          check_image access "$ACCESS_TAG"
+          check_image worker "$WORKER_TAG"
+          check_image report "$REPORT_TAG"
+          check_image db-migrate "$DB_MIGRATE_TAG"
 
-                  kubectl -n test delete job db-migrate --ignore-not-found
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region "$AWS_REGION" \
+            --name "$EKS_CLUSTER_NAME"
 
-                  sed \
-                    "s|$ECR_REGISTRY/$ECR_NAMESPACE/db-migrate:latest|$ECR_REGISTRY/$ECR_NAMESPACE/db-migrate:$IMAGE_TAG|g" \
-                    deploy/k8s/test/05-migrate-job.yaml \
-                    | kubectl apply -f -
+      - name: Apply base manifests
+        run: |
+          kubectl apply -f deploy/k8s/test/00-namespace.yaml
+          kubectl apply -f deploy/k8s/test/01-configmap.yaml
+          kubectl apply -f deploy/k8s/test/03-serviceaccounts.yaml
 
-                  kubectl -n test wait \
-                    --for=condition=complete job/db-migrate \
-                    --timeout=180s
+      - name: Run database migration
+        if: env.DB_MIGRATE_TAG != ''
+        run: |
+          set -euo pipefail
 
-                  kubectl -n test logs job/db-migrate
+          kubectl -n test delete job db-migrate --ignore-not-found
 
-            - name: Apply application manifests with selected image tag
-              run: |
-                  set -euo pipefail
+          sed \
+            "s|$ECR_REGISTRY/$ECR_NAMESPACE/db-migrate:latest|$ECR_REGISTRY/$ECR_NAMESPACE/db-migrate:$DB_MIGRATE_TAG|g" \
+            deploy/k8s/test/05-migrate-job.yaml \
+            | kubectl apply -f -
 
-                  sed \
-                    "s|$ECR_REGISTRY/$ECR_NAMESPACE/access:latest|$ECR_REGISTRY/$ECR_NAMESPACE/access:$IMAGE_TAG|g" \
-                    deploy/k8s/test/04-access.yaml \
-                    | kubectl apply -f -
+          kubectl -n test wait \
+            --for=condition=complete job/db-migrate \
+            --timeout=180s
 
-                  sed \
-                    "s|$ECR_REGISTRY/$ECR_NAMESPACE/worker:latest|$ECR_REGISTRY/$ECR_NAMESPACE/worker:$IMAGE_TAG|g" \
-                    deploy/k8s/test/06-worker.yaml \
-                    | kubectl apply -f -
+          kubectl -n test logs job/db-migrate
 
-                  sed \
-                    "s|$ECR_REGISTRY/$ECR_NAMESPACE/report:latest|$ECR_REGISTRY/$ECR_NAMESPACE/report:$IMAGE_TAG|g" \
-                    deploy/k8s/test/07-report.yaml \
-                    | kubectl apply -f -
+      - name: Deploy access
+        if: env.ACCESS_TAG != ''
+        run: |
+          set -euo pipefail
 
-            - name: Wait for rollout
-              run: |
-                  kubectl -n test rollout status deployment/access --timeout=180s
-                  kubectl -n test rollout status deployment/worker --timeout=180s
-                  kubectl -n test rollout status deployment/report --timeout=180s
+          sed \
+            "s|$ECR_REGISTRY/$ECR_NAMESPACE/access:latest|$ECR_REGISTRY/$ECR_NAMESPACE/access:$ACCESS_TAG|g" \
+            deploy/k8s/test/04-access.yaml \
+            | kubectl apply -f -
 
-            - name: Show deployed images
-              run: |
-                  kubectl -n test get deployment access worker report \
-                    -o custom-columns=NAME:.metadata.name,IMAGE:.spec.template.spec.containers[0].image
+      - name: Deploy worker
+        if: env.WORKER_TAG != ''
+        run: |
+          set -euo pipefail
 
-            - name: Show final status
-              run: |
-                  kubectl -n test get all
+          sed \
+            "s|$ECR_REGISTRY/$ECR_NAMESPACE/worker:latest|$ECR_REGISTRY/$ECR_NAMESPACE/worker:$WORKER_TAG|g" \
+            deploy/k8s/test/06-worker.yaml \
+            | kubectl apply -f -
+
+      - name: Deploy report
+        if: env.REPORT_TAG != ''
+        run: |
+          set -euo pipefail
+
+          sed \
+            "s|$ECR_REGISTRY/$ECR_NAMESPACE/report:latest|$ECR_REGISTRY/$ECR_NAMESPACE/report:$REPORT_TAG|g" \
+            deploy/k8s/test/07-report.yaml \
+            | kubectl apply -f -
+
+      - name: Wait for rollout
+        run: |
+          set -euo pipefail
+
+          if [[ -n "$ACCESS_TAG" ]]; then
+            kubectl -n test rollout status deployment/access --timeout=180s
+          fi
+
+          if [[ -n "$WORKER_TAG" ]]; then
+            kubectl -n test rollout status deployment/worker --timeout=180s
+          fi
+
+          if [[ -n "$REPORT_TAG" ]]; then
+            kubectl -n test rollout status deployment/report --timeout=180s
+          fi
+
+      - name: Show deployed images
+        run: |
+          kubectl -n test get deployment access worker report \
+            -o custom-columns=NAME:.metadata.name,IMAGE:.spec.template.spec.containers[0].image
+
+      - name: Show final status
+        run: kubectl -n test get all
