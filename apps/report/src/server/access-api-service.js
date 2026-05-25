@@ -4,6 +4,7 @@ import { ApiError } from "./api-error.js";
 export { ApiError };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const TAIPEI_TIME_ZONE = "Asia/Taipei";
 
 function toInt(value) {
   if (value === undefined || value === null || value === "") {
@@ -118,6 +119,32 @@ function startOfDay(date) {
 
 function endOfDay(date) {
   return new Date(startOfDay(date).getTime() + DAY_MS - 1);
+}
+
+function taipeiDateParts(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TAIPEI_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  const parts = formatter.formatToParts(date);
+  const get = (type) => parts.find((part) => part.type === type)?.value;
+
+  return {
+    year: Number(get("year")),
+    month: Number(get("month")),
+    day: Number(get("day")),
+  };
+}
+
+function taipeiDayRange(date = new Date()) {
+  const { year, month, day } = taipeiDateParts(date);
+  const start = new Date(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00+08:00`);
+  const end = new Date(start.getTime() + DAY_MS);
+
+  return { start, end };
 }
 
 function parseDate(value, fallback) {
@@ -745,12 +772,8 @@ async function getDailyAttendance(query, scope) {
 
 async function getTodayAttendanceStatus(query, scope) {
   const employeeId = await resolveScopedEmployeeId(query, scope);
-  const date = startOfDay(new Date());
-  const logs = await getEmployeeLogs(
-    employeeId,
-    date,
-    new Date(date.getTime() + DAY_MS),
-  );
+  const { start, end } = taipeiDayRange();
+  const logs = await getEmployeeLogs(employeeId, start, end);
   const acceptedIn = logs.find(
     (log) =>
       String(log.result).toUpperCase() === "ACCEPT" &&

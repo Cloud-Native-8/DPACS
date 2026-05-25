@@ -6,7 +6,7 @@
     "dev": "node --watch src/index.js",
     "build": "node --check src/index.js",
     "start": "node src/index.js",
-    "test": "node --test"
+    "test": "cd ../.. && node scripts/run-with-root-env.mjs node --test \"apps/access/src/**/*.test.js\""
   },
   "dependencies": {
     "@repo/queue": "workspace:*",
