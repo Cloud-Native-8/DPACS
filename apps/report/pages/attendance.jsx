@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import DateRangeFilter from "../components/DateRangeFilter.jsx";
 import Sidebar from "../components/Sidebar.jsx";
-import { fetchAccessApi, getStoredToken } from "../src/lib/access-api-client.js";
+import {
+  fetchAccessApi,
+  getStoredToken,
+} from "../src/lib/access-api-client.js";
 import { formatTime } from "../src/lib/date-format.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -17,7 +20,7 @@ const addDays = (date, days) => new Date(date.getTime() + days * DAY_MS);
 
 const getDefaultDateRange = (today = new Date()) => ({
   start: getDateInputValue(new Date(today.getFullYear(), today.getMonth(), 1)),
-  end: getDateInputValue(today)
+  end: getDateInputValue(today),
 });
 
 const toShortDate = (dateKey) => {
@@ -51,12 +54,16 @@ const formatAnomalyReason = (reason) => {
     return "沒有進入任何場域的紀錄";
   }
 
-  const duplicateEntryMatch = normalized.match(/employee must exit site (\d+) before any new entry/);
+  const duplicateEntryMatch = normalized.match(
+    /employee must exit site (\d+) before any new entry/,
+  );
   if (duplicateEntryMatch) {
     return `需先離開場域 ${duplicateEntryMatch[1]} 才能再次進入`;
   }
 
-  const sameSiteExitMatch = normalized.match(/employee must exit the same site they entered \((\d+)\)/);
+  const sameSiteExitMatch = normalized.match(
+    /employee must exit the same site they entered \((\d+)\)/,
+  );
   if (sameSiteExitMatch) {
     return `需從原本進入的同一場域 ${sameSiteExitMatch[1]} 離開`;
   }
@@ -91,7 +98,7 @@ const pickEvents = (logs, direction) => {
     .filter(
       (log) =>
         String(log.result).toUpperCase() === "ACCEPT" &&
-        String(log.direction).toUpperCase() === direction
+        String(log.direction).toUpperCase() === direction,
     )
     .map((log) => log.eventTime)
     .filter(Boolean);
@@ -107,7 +114,7 @@ const toDeniedRow = (log, date) => {
     inTimes: direction === "IN" && time ? [time] : [],
     outTimes: direction === "OUT" && time ? [time] : [],
     anomaly: formatAnomalyReason(log.reason),
-    isAnomaly: true
+    isAnomaly: true,
   };
 };
 
@@ -121,10 +128,14 @@ const toAttendanceRows = (summary, dateRange) => {
     const date = getDateInputValue(new Date(time));
     const dateRows = [];
     const logs = [...(logsByDate.get(date) ?? [])].sort(
-      (a, b) => new Date(a.eventTime) - new Date(b.eventTime)
+      (a, b) => new Date(a.eventTime) - new Date(b.eventTime),
     );
-    const acceptedLogs = logs.filter((log) => String(log.result).toUpperCase() === "ACCEPT");
-    const deniedLogs = logs.filter((log) => String(log.result).toUpperCase() === "DENY");
+    const acceptedLogs = logs.filter(
+      (log) => String(log.result).toUpperCase() === "ACCEPT",
+    );
+    const deniedLogs = logs.filter(
+      (log) => String(log.result).toUpperCase() === "DENY",
+    );
     const inTimes = pickEvents(acceptedLogs, "IN");
     const outTimes = pickEvents(acceptedLogs, "OUT");
 
@@ -135,7 +146,7 @@ const toAttendanceRows = (summary, dateRange) => {
         inTimes: inTimes.map(toDisplayTime).filter(Boolean),
         outTimes: outTimes.map(toDisplayTime).filter(Boolean),
         anomaly: "",
-        isAnomaly: false
+        isAnomaly: false,
       });
     }
 
@@ -146,8 +157,8 @@ const toAttendanceRows = (summary, dateRange) => {
         ...row,
         isFirstDateRow: index === 0,
         dateRowSpan: dateRows.length,
-        hasDateGap: rows.length > 0 && index === 0
-      }))
+        hasDateGap: rows.length > 0 && index === 0,
+      })),
     );
   }
 
@@ -159,7 +170,7 @@ const getCellClassName = (row, extraClassName = "") =>
     "px-4 align-top",
     row.isFirstDateRow ? "py-4" : "pt-1 pb-4",
     row.hasDateGap ? "border-t-[12px] border-white" : "",
-    extraClassName
+    extraClassName,
   ]
     .filter(Boolean)
     .join(" ");
@@ -170,7 +181,9 @@ const KpiCard = ({ label, value, tone = "blue" }) => {
   return (
     <article className={`min-h-28 rounded-2xl ${toneClass} px-6 py-5`}>
       <p className="text-sm font-medium text-slate-700">{label}</p>
-      <p className="mt-4 text-3xl font-semibold leading-none text-slate-950">{value}</p>
+      <p className="mt-4 text-3xl font-semibold leading-none text-slate-950">
+        {value}
+      </p>
     </article>
   );
 };
@@ -192,14 +205,14 @@ export default function AttendanceQueryPage() {
 
     const params = new URLSearchParams({
       startDate: dateRange.start,
-      endDate: dateRange.end
+      endDate: dateRange.end,
     });
 
     setError("");
 
     Promise.all([
       fetchAccessApi("/api/me/attendance/today-status", token),
-      fetchAccessApi(`/api/me/attendance/summary?${params}`, token)
+      fetchAccessApi(`/api/me/attendance/summary?${params}`, token),
     ])
       .then(([todayData, summaryData]) => {
         if (!isMounted) return;
@@ -220,14 +233,14 @@ export default function AttendanceQueryPage() {
 
   const rows = useMemo(
     () => toAttendanceRows(displaySummary, dateRange),
-    [displaySummary, dateRange]
+    [displaySummary, dateRange],
   );
 
   const setRangePreset = (preset) => {
     if (preset === "week") {
       setDateRange({
         start: getDateInputValue(addDays(today, -6)),
-        end: getDateInputValue(today)
+        end: getDateInputValue(today),
       });
       return;
     }
@@ -240,7 +253,10 @@ export default function AttendanceQueryPage() {
       if (field === "start") {
         return { start: value, end: value > current.end ? value : current.end };
       }
-      return { start: value < current.start ? value : current.start, end: value };
+      return {
+        start: value < current.start ? value : current.start,
+        end: value,
+      };
     });
   };
 
@@ -267,7 +283,7 @@ export default function AttendanceQueryPage() {
               <button
                 type="button"
                 onClick={() => setRangePreset("month")}
-                className="h-11 rounded-2xl bg-slate-100 px-5 text-sm font-medium text-slate-900 transition hover:bg-slate-200"
+                className="h-11 rounded-2xl bg-slate-100 px-5 text-sm font-medium text-slate-900 transition hover:bg-slate-200 mr-5"
               >
                 本月
               </button>
@@ -280,102 +296,122 @@ export default function AttendanceQueryPage() {
             )}
 
             <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                <div>
-                  <p className="mb-4 text-sm font-semibold text-slate-950">累積狀態</p>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <KpiCard label="總時數" value={formatHours(displaySummary?.totalWorkingHours)} />
-                    <KpiCard label="累積加班時數" value={formatHours(displaySummary?.totalOvertimeHours)} />
-                  </div>
-                </div>
-
-                <div>
-                  <p className="mb-4 text-sm font-semibold text-slate-950">當日出勤狀態</p>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <KpiCard
-                      label="預估下班時間"
-                      value={toDisplayTime(todayStatus?.estimatedOffWorkTime) || "-"}
-                      tone="violet"
-                    />
-                    <KpiCard
-                      label="剩餘時數"
-                      value={formatRemainingHours(todayStatus?.remainingMinutes)}
-                      tone="violet"
-                    />
-                  </div>
+              <div>
+                <p className="mb-4 text-sm font-semibold text-slate-950">
+                  累積狀態
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <KpiCard
+                    label="總時數"
+                    value={formatHours(displaySummary?.totalWorkingHours)}
+                  />
+                  <KpiCard
+                    label="累積加班時數"
+                    value={formatHours(displaySummary?.totalOvertimeHours)}
+                  />
                 </div>
               </div>
+
+              <div>
+                <p className="mb-4 text-sm font-semibold text-slate-950">
+                  當日出勤狀態
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <KpiCard
+                    label="預估下班時間"
+                    value={
+                      toDisplayTime(todayStatus?.estimatedOffWorkTime) || "-"
+                    }
+                    tone="violet"
+                  />
+                  <KpiCard
+                    label="剩餘時數"
+                    value={formatRemainingHours(todayStatus?.remainingMinutes)}
+                    tone="violet"
+                  />
+                </div>
+              </div>
+            </div>
           </section>
 
           <section className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-lg shadow-slate-900/5">
-              <div className="px-6 py-6">
-                <p className="text-sm font-semibold text-slate-950">出勤紀錄</p>
-              </div>
+            <div className="px-6 py-6">
+              <p className="text-sm font-semibold text-slate-950">出勤紀錄</p>
+            </div>
 
-              <div className="overflow-x-auto px-6 pb-8">
-                <table className="w-full min-w-[760px] table-fixed border-separate border-spacing-y-0">
-                  <colgroup>
-                    <col className="w-[16%]" />
-                    <col className="w-[22%]" />
-                    <col className="w-[22%]" />
-                    <col className="w-[40%]" />
-                  </colgroup>
-                  <thead>
-                    <tr className="text-left text-xs font-medium text-slate-500">
-                      <th className="px-4 py-2">日期</th>
-                      <th className="px-4 py-2">進入時間</th>
-                      <th className="px-4 py-2">離開時間</th>
-                      <th className="px-4 py-2">異常狀態</th>
+            <div className="overflow-x-auto px-6 pb-8">
+              <table className="w-full min-w-[760px] table-fixed border-separate border-spacing-y-0">
+                <colgroup>
+                  <col className="w-[16%]" />
+                  <col className="w-[22%]" />
+                  <col className="w-[22%]" />
+                  <col className="w-[40%]" />
+                </colgroup>
+                <thead>
+                  <tr className="text-left text-xs font-medium text-slate-500">
+                    <th className="px-4 py-2">日期</th>
+                    <th className="px-4 py-2">進入時間</th>
+                    <th className="px-4 py-2">離開時間</th>
+                    <th className="px-4 py-2">異常狀態</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr
+                      key={row.key}
+                      className="bg-slate-50/80 text-sm text-slate-950"
+                    >
+                      {row.isFirstDateRow && (
+                        <td
+                          rowSpan={row.dateRowSpan}
+                          className={getCellClassName(
+                            row,
+                            "rounded-l-2xl font-medium",
+                          )}
+                        >
+                          {toShortDate(row.date)}
+                        </td>
+                      )}
+                      <td className={getCellClassName(row)}>
+                        {row.inTimes.length ? (
+                          <div className="space-y-1">
+                            {row.inTimes.map((time, index) => (
+                              <p
+                                key={`${row.key}-in-${index}`}
+                                className={row.isAnomaly ? "text-red-400" : ""}
+                              >
+                                {time}
+                              </p>
+                            ))}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className={getCellClassName(row)}>
+                        {row.outTimes.length ? (
+                          <div className="space-y-1">
+                            {row.outTimes.map((time, index) => (
+                              <p
+                                key={`${row.key}-out-${index}`}
+                                className={row.isAnomaly ? "text-red-400" : ""}
+                              >
+                                {time}
+                              </p>
+                            ))}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className={getCellClassName(row, "rounded-r-2xl")}>
+                        {row.anomaly ? (
+                          <span className="break-words text-red-400">
+                            {row.anomaly}
+                          </span>
+                        ) : null}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row) => (
-                      <tr key={row.key} className="bg-slate-50/80 text-sm text-slate-950">
-                        {row.isFirstDateRow && (
-                          <td
-                            rowSpan={row.dateRowSpan}
-                            className={getCellClassName(row, "rounded-l-2xl font-medium")}
-                          >
-                            {toShortDate(row.date)}
-                          </td>
-                        )}
-                        <td className={getCellClassName(row)}>
-                          {row.inTimes.length ? (
-                            <div className="space-y-1">
-                              {row.inTimes.map((time, index) => (
-                                <p
-                                  key={`${row.key}-in-${index}`}
-                                  className={row.isAnomaly ? "text-red-400" : ""}
-                                >
-                                  {time}
-                                </p>
-                              ))}
-                            </div>
-                          ) : null}
-                        </td>
-                        <td className={getCellClassName(row)}>
-                          {row.outTimes.length ? (
-                            <div className="space-y-1">
-                              {row.outTimes.map((time, index) => (
-                                <p
-                                  key={`${row.key}-out-${index}`}
-                                  className={row.isAnomaly ? "text-red-400" : ""}
-                                >
-                                  {time}
-                                </p>
-                              ))}
-                            </div>
-                          ) : null}
-                        </td>
-                        <td className={getCellClassName(row, "rounded-r-2xl")}>
-                          {row.anomaly ? (
-                            <span className="break-words text-red-400">{row.anomaly}</span>
-                          ) : null}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
         </section>
       </div>
