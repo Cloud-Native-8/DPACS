@@ -82,7 +82,7 @@ export default function Sidebar({ activePage }) {
   }, []);
 
   return (
-    <aside className="hidden rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-lg shadow-slate-900/5 lg:block">
+    <aside className="hidden min-h-[calc(100vh-3rem)] rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-lg shadow-slate-900/5 lg:block">
       <div className="flex items-center gap-4">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-sm font-semibold text-white">
           {employeeInitial}

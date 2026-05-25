@@ -170,7 +170,7 @@ jobs:
             echo "Images:"
             echo "\`${{ needs.detect-changes.outputs.images }}\`"
             echo ""
-            echo "Use this tag for deploy-test:"
+            echo "Use this tag for release-test or selective deploy-test:"
             echo ""
             echo "\`\`\`"
             echo "${{ github.sha }}"

@@ -121,6 +121,100 @@ PR 階段不會觸發：
 
 正式部署建議吃 `github.sha` 這種 immutable tag，不要依賴 `latest`。
 
+## Test Deploy Workflows
+
+目前另外有三個手動 workflow：
+
+- [deploy-test.yaml](/Users/slowpoke/Documents/雲原生/cloud-native-8/.github/workflows/deploy-test.yaml)
+- [release-test.yaml](/Users/slowpoke/Documents/雲原生/cloud-native-8/.github/workflows/release-test.yaml)
+- [release-build-test.yaml](/Users/slowpoke/Documents/雲原生/cloud-native-8/.github/workflows/release-build-test.yaml)
+
+### `deploy-test`
+
+用途是 selective deploy 到 EKS `test` namespace。
+
+它支援分別指定：
+
+- `access_tag`
+- `worker_tag`
+- `report_tag`
+- `db_migrate_tag`
+
+規則：
+
+- 沒填的 image 不會驗證，也不會更新 deployment
+- `db_migrate_tag` 沒填就不會跑 migration job
+- 至少要填一個 input，不然 workflow 會直接失敗
+
+這個 workflow 適合：
+
+- 只驗證 `access` 新版
+- 只更新 `worker`
+- 只跑一次 migration
+- `report` 保持現況不動
+
+### `release-test`
+
+用途是整套 release deploy 到 EKS `test` namespace。
+
+它只吃一個 `image_tag`，並要求這四個 image 都存在同一個 tag：
+
+- `access`
+- `worker`
+- `report`
+- `db-migrate`
+
+流程是：
+
+1. 驗證四個 images 都存在
+2. 跑 `db-migrate:<image_tag>`
+3. 把 `access`、`worker`、`report` 全部更新成同一個 tag
+4. 等待 rollout 完成
+
+這個 workflow 適合：
+
+- 驗證一整個 release 組合
+- 測試 `main` push 後完整版本是否能一起工作
+
+### `release-build-test`
+
+用途是 full build + full push + full deploy 到 EKS `test` namespace。
+
+它的流程是：
+
+1. 跑完整 workspace test/build 檢查
+2. 強制 build 四個 images
+   - `access`
+   - `worker`
+   - `report`
+   - `db-migrate`
+3. 全部 push 成同一個 tag：
+   - `github.sha`
+   - 另外也補 `latest`
+4. 跑 `db-migrate:<github.sha>`
+5. 把 `access`、`worker`、`report` 全部更新成 `:<github.sha>`
+6. 等待 rollout 完成
+
+這個 workflow 適合：
+
+- 想從一個 commit 直接產出完整 release set
+- 不想手動確認哪些 image 有沒有同 tag
+- 想一次 build/push/deploy 到 test
+
+### 三者差異
+
+- `deploy-test`: selective deploy，適合日常單服務驗證
+- `release-test`: full deploy，適合已存在完整 tag 的 release 驗證
+- `release-build-test`: full build + push + deploy，適合從單一 commit 直接產出並部署完整 release
+
+如果某次 CI 只 push 了 `access:<sha>`，那個 `sha` 通常只能拿去：
+
+- `deploy-test` 的 `access_tag`
+
+不能直接拿去 `release-test`，因為 `worker/report/db-migrate` 很可能沒有同一個 tag。
+
+如果你希望從單一 commit 直接得到完整同版 images，應該改用 `release-build-test`。
+
 ## Affected CI 規則
 
 `detect-changes` 目前採保守規則：
