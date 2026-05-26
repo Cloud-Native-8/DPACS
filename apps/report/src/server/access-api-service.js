@@ -812,7 +812,8 @@ async function getTodayAttendanceStatus(query, scope) {
     ? Math.max(
         0,
         Math.round(
-          (estimatedOffWorkTime - (new Date() + 8 * 60 * 60 * 1000)) / 60000,
+          (estimatedOffWorkTime - new Date(Date.now() + 8 * 60 * 60 * 1000)) /
+            60000,
         ),
       )
     : null;
