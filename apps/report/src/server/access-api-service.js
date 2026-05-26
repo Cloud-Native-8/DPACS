@@ -147,6 +147,24 @@ function taipeiDayRange(date = new Date()) {
   return { start, end };
 }
 
+function interpretTimestampAsTaipei(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const hour = String(date.getUTCHours()).padStart(2, "0");
+  const minute = String(date.getUTCMinutes()).padStart(2, "0");
+  const second = String(date.getUTCSeconds()).padStart(2, "0");
+  const millisecond = String(date.getUTCMilliseconds()).padStart(3, "0");
+
+  return new Date(
+    `${year}-${month}-${day}T${hour}:${minute}:${second}.${millisecond}+08:00`,
+  );
+}
+
 function parseDate(value, fallback) {
   const text = toText(value);
   if (!text) {
@@ -782,8 +800,11 @@ async function getTodayAttendanceStatus(query, scope) {
   const hasDeniedAccessLog = logs.some(
     (log) => String(log.result).toUpperCase() === "DENY",
   );
-  const estimatedOffWorkTime = acceptedIn
-    ? new Date(acceptedIn.eventTime.getTime() + 8 * 60 * 60 * 1000)
+  const acceptedInTime = acceptedIn
+    ? interpretTimestampAsTaipei(acceptedIn.eventTime)
+    : null;
+  const estimatedOffWorkTime = acceptedInTime
+    ? new Date(acceptedInTime.getTime() + 8 * 60 * 60 * 1000)
     : null;
   const remainingMinutes = estimatedOffWorkTime
     ? Math.max(0, Math.round((estimatedOffWorkTime - new Date()) / 60000))
