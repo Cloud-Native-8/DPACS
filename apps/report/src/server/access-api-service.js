@@ -141,7 +141,9 @@ function taipeiDateParts(date = new Date()) {
 
 function taipeiDayRange(date = new Date()) {
   const { year, month, day } = taipeiDateParts(date);
-  const start = new Date(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00+08:00`);
+  const start = new Date(
+    `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00+08:00`,
+  );
   const end = new Date(start.getTime() + DAY_MS);
 
   return { start, end };
@@ -804,10 +806,15 @@ async function getTodayAttendanceStatus(query, scope) {
     ? interpretTimestampAsTaipei(acceptedIn.eventTime)
     : null;
   const estimatedOffWorkTime = acceptedInTime
-    ? new Date(acceptedInTime.getTime() + 8 * 60 * 60 * 1000)
+    ? new Date(acceptedInTime.getTime() + 2 * 8 * 60 * 60 * 1000)
     : null;
   const remainingMinutes = estimatedOffWorkTime
-    ? Math.max(0, Math.round((estimatedOffWorkTime - new Date()) / 60000))
+    ? Math.max(
+        0,
+        Math.round(
+          (estimatedOffWorkTime - (new Date() + 8 * 60 * 60 * 1000)) / 60000,
+        ),
+      )
     : null;
 
   return {
