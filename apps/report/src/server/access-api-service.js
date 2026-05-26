@@ -141,10 +141,30 @@ function taipeiDateParts(date = new Date()) {
 
 function taipeiDayRange(date = new Date()) {
   const { year, month, day } = taipeiDateParts(date);
-  const start = new Date(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00+08:00`);
+  const start = new Date(
+    `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00+08:00`,
+  );
   const end = new Date(start.getTime() + DAY_MS);
 
   return { start, end };
+}
+
+function interpretTimestampAsTaipei(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const hour = String(date.getUTCHours()).padStart(2, "0");
+  const minute = String(date.getUTCMinutes()).padStart(2, "0");
+  const second = String(date.getUTCSeconds()).padStart(2, "0");
+  const millisecond = String(date.getUTCMilliseconds()).padStart(3, "0");
+
+  return new Date(
+    `${year}-${month}-${day}T${hour}:${minute}:${second}.${millisecond}+08:00`,
+  );
 }
 
 function parseDate(value, fallback) {
@@ -779,31 +799,32 @@ async function getTodayAttendanceStatus(query, scope) {
       String(log.result).toUpperCase() === "ACCEPT" &&
       String(log.direction).toUpperCase() === "IN",
   );
-  const acceptedOut = logs.findLast?.(
-    (log) =>
-      String(log.result).toUpperCase() === "ACCEPT" &&
-      String(log.direction).toUpperCase() === "OUT",
-  );
   const hasDeniedAccessLog = logs.some(
     (log) => String(log.result).toUpperCase() === "DENY",
   );
-  const estimatedOffWorkTime = acceptedIn
-    ? new Date(acceptedIn.eventTime.getTime() + 8 * 60 * 60 * 1000)
+  const acceptedInTime = acceptedIn
+    ? interpretTimestampAsTaipei(acceptedIn.eventTime)
+    : null;
+  const estimatedOffWorkTime = acceptedInTime
+    ? new Date(acceptedInTime.getTime() + 2 * 8 * 60 * 60 * 1000)
     : null;
   const remainingMinutes = estimatedOffWorkTime
-    ? Math.max(0, Math.round((estimatedOffWorkTime - new Date()) / 60000))
+    ? Math.max(
+        0,
+        Math.round(
+          (estimatedOffWorkTime - (new Date() + 8 * 60 * 60 * 1000)) / 60000,
+        ),
+      )
     : null;
 
   return {
     employeeId: toNumber(employeeId),
     hasCheckInToday: Boolean(acceptedIn),
-    estimatedOffWorkTime: acceptedOut
-      ? acceptedOut.eventTime.toISOString()
-      : (estimatedOffWorkTime?.toISOString() ?? null),
-    remainingMinutes: acceptedOut ? 0 : remainingMinutes,
+    estimatedOffWorkTime: estimatedOffWorkTime?.toISOString() ?? null,
+    remainingMinutes,
     calculable: Boolean(acceptedIn),
     message: acceptedIn
-      ? `You have ${acceptedOut ? 0 : remainingMinutes} minutes remaining.`
+      ? `You have ${remainingMinutes} minutes remaining.`
       : "目前無法計算",
     hasDeniedAccessLog,
   };
