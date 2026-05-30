@@ -31,10 +31,10 @@ model Department {
   createdAt      DateTime? @map("created_at") @db.Timestamp(6)
   updatedAt      DateTime? @map("updated_at") @db.Timestamp(6)
 
-  manager               Employee?              @relation("DepartmentManager", fields: [managerId], references: [employeeId], onDelete: NoAction, onUpdate: NoAction)
-  employees             Employee[]             @relation("EmployeeDepartment")
-  ancestorDepartments   DepartmentHierarchy[]  @relation("DepartmentAncestors")
-  descendantDepartments DepartmentHierarchy[]  @relation("DepartmentDescendants")
+  manager               Employee?             @relation("DepartmentManager", fields: [managerId], references: [employeeId], onDelete: NoAction, onUpdate: NoAction)
+  employees             Employee[]            @relation("EmployeeDepartment")
+  ancestorDepartments   DepartmentHierarchy[] @relation("DepartmentAncestors")
+  descendantDepartments DepartmentHierarchy[] @relation("DepartmentDescendants")
 
   @@map("department")
 }
@@ -63,10 +63,13 @@ model Employee {
   createdAt    DateTime? @map("created_at") @db.Timestamp(6)
   updatedAt    DateTime? @map("updated_at") @db.Timestamp(6)
 
-  department         Department           @relation("EmployeeDepartment", fields: [departmentId], references: [departmentId], onDelete: NoAction, onUpdate: NoAction)
-  managedDepartments Department[]         @relation("DepartmentManager")
+  department         Department                       @relation("EmployeeDepartment", fields: [departmentId], references: [departmentId], onDelete: NoAction, onUpdate: NoAction)
+  managedDepartments Department[]                     @relation("DepartmentManager")
   employeeSiteAccess EmployeeSiteAccess[]
   accessLogs         AccessLog[]
+  accessState        EmployeeAccessState?
+  dailySummaries     EmployeeDailyAttendanceSummary[]
+  reportRefreshQueue ReportRefreshQueue[]
 
   @@map("employee")
 }
@@ -81,21 +84,23 @@ model Site {
   accessPoints       AccessPoint[]
   employeeSiteAccess EmployeeSiteAccess[]
   accessLogs         AccessLog[]
+  employeeStates     EmployeeAccessState[]
 
   @@map("site")
 }
 
 model AccessPoint {
-  accessPointId      BigInt    @id @map("access_point_id")
-  accessPointName    String    @map("access_point_name") @db.VarChar(100)
-  siteId             BigInt    @map("site_id")
-  locationDescription String?  @map("location_description")
-  isActive           Boolean   @default(true) @map("is_active")
-  createdAt          DateTime? @map("created_at") @db.Timestamp(6)
-  updatedAt          DateTime? @map("updated_at") @db.Timestamp(6)
+  accessPointId       BigInt    @id @map("access_point_id")
+  accessPointName     String    @map("access_point_name") @db.VarChar(100)
+  siteId              BigInt    @map("site_id")
+  locationDescription String?   @map("location_description")
+  isActive            Boolean   @default(true) @map("is_active")
+  createdAt           DateTime? @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime? @map("updated_at") @db.Timestamp(6)
 
   site       Site        @relation(fields: [siteId], references: [siteId], onDelete: NoAction, onUpdate: NoAction)
   accessLogs AccessLog[]
+  states     EmployeeAccessState[]
 
   @@map("access_point")
 }
@@ -132,6 +137,59 @@ model AccessLog {
   employee    Employee    @relation(fields: [employeeId], references: [employeeId], onDelete: NoAction, onUpdate: NoAction)
   site        Site        @relation(fields: [siteId], references: [siteId], onDelete: NoAction, onUpdate: NoAction)
   accessPoint AccessPoint @relation(fields: [accessPointId], references: [accessPointId], onDelete: NoAction, onUpdate: NoAction)
+  states      EmployeeAccessState[]
 
+  @@index([employeeId, eventTime], map: "idx_access_log_employee_event_time")
+  @@index([result, eventTime(sort: Desc)], map: "idx_access_log_result_event_time")
+  @@index([siteId, eventTime], map: "idx_access_log_site_event_time")
   @@map("access_log")
+}
+
+model EmployeeAccessState {
+  employeeId        BigInt    @id @map("employee_id")
+  siteId            BigInt?   @map("site_id")
+  currentState      String    @default("UNKNOWN") @map("current_state") @db.VarChar(20)
+  lastLogId         BigInt?   @map("last_log_id")
+  lastAccessPointId BigInt?   @map("last_access_point_id")
+  lastDirection     String?   @map("last_direction") @db.VarChar(10)
+  lastEventTime     DateTime? @map("last_event_time") @db.Timestamp(6)
+  updatedAt         DateTime  @default(now()) @map("updated_at") @db.Timestamp(6)
+
+  employee        Employee     @relation(fields: [employeeId], references: [employeeId], onDelete: NoAction, onUpdate: NoAction)
+  site            Site?        @relation(fields: [siteId], references: [siteId], onDelete: NoAction, onUpdate: NoAction)
+  lastLog         AccessLog?   @relation(fields: [lastLogId], references: [logId], onDelete: NoAction, onUpdate: NoAction)
+  lastAccessPoint AccessPoint? @relation(fields: [lastAccessPointId], references: [accessPointId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([siteId, currentState], map: "idx_employee_access_state_site_state")
+  @@map("employee_access_state")
+}
+
+model EmployeeDailyAttendanceSummary {
+  employeeId      BigInt    @map("employee_id")
+  workDate        DateTime  @map("work_date") @db.Date
+  firstInTime     DateTime? @map("first_in_time") @db.Timestamp(6)
+  lastOutTime     DateTime? @map("last_out_time") @db.Timestamp(6)
+  workingMinutes  Int       @default(0) @map("working_minutes")
+  overtimeMinutes Int       @default(0) @map("overtime_minutes")
+  deniedLogCount  Int       @default(0) @map("denied_log_count")
+  isComplete      Boolean   @default(true) @map("is_complete")
+  calculatedAt    DateTime  @default(now()) @map("calculated_at") @db.Timestamp(6)
+
+  employee Employee @relation(fields: [employeeId], references: [employeeId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([employeeId, workDate])
+  @@index([workDate], map: "idx_employee_daily_summary_work_date")
+  @@map("employee_daily_attendance_summary")
+}
+
+model ReportRefreshQueue {
+  employeeId  BigInt    @map("employee_id")
+  workDate    DateTime  @map("work_date") @db.Date
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  processedAt DateTime? @map("processed_at") @db.Timestamp(6)
+
+  employee Employee @relation(fields: [employeeId], references: [employeeId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([employeeId, workDate])
+  @@map("report_refresh_queue")
 }

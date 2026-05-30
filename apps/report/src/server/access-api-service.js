@@ -649,30 +649,22 @@ async function getAccessStatus(employeeId, query, scope) {
   ensureVisibleEmployee(scope, employeeId);
 
   const siteId = toBigInt(query.siteId);
-  const log = await prisma.accessLog.findFirst({
+  const state = await prisma.employeeAccessState.findFirst({
     where: {
       employeeId,
-      result: "Accept",
-      ...(siteId ? { siteId } : {}),
-    },
-    orderBy: {
-      eventTime: "desc",
-    },
+      ...(siteId ? { siteId } : {})
+    }
   });
 
   return {
     employeeId: toNumber(employeeId),
-    siteId: toNumber(siteId ?? log?.siteId),
-    isInside: String(log?.direction).toUpperCase() === "IN",
-    currentState: log
-      ? String(log.direction).toUpperCase() === "IN"
-        ? "INSIDE"
-        : "OUTSIDE"
-      : "UNKNOWN",
-    lastLogId: toNumber(log?.logId),
-    lastDirection: log?.direction ?? null,
-    lastTimestamp: log?.eventTime.toISOString() ?? null,
-    lastAccessPointId: toNumber(log?.accessPointId),
+    siteId: toNumber(siteId ?? state?.siteId),
+    isInside: state?.currentState === "INSIDE",
+    currentState: state?.currentState ?? "UNKNOWN",
+    lastLogId: state?.lastLogId?.toString() ?? null,
+    lastDirection: state?.lastDirection ?? null,
+    lastTimestamp: state?.lastEventTime?.toISOString() ?? null,
+    lastAccessPointId: toNumber(state?.lastAccessPointId)
   };
 }
 
@@ -731,19 +723,95 @@ async function getEmployeeLogs(employeeId, start, end) {
   });
 }
 
+function emptyDailyRecord(date, logs = []) {
+  return {
+    date: formatDate(date),
+    workingHours: 0,
+    overtimeHours: 0,
+    overEightHours: false,
+    isComplete: true,
+    accessEvents: logs.map(formatAccessLog),
+    deniedAccessLogs: logs.filter((log) => String(log.result).toUpperCase() === "DENY").map(formatAccessLog),
+    firstInTime: null,
+    lastOutTime: null,
+    hasActivity: logs.length > 0
+  };
+}
+
+function summaryToDailyRecord(date, summary, logs = []) {
+  if (!summary) {
+    return emptyDailyRecord(date, logs);
+  }
+
+  const workingHours = round(summary.workingMinutes / 60);
+  const overtimeHours = round(summary.overtimeMinutes / 60);
+
+  return {
+    date: formatDate(date),
+    workingHours,
+    overtimeHours,
+    overEightHours: workingHours > 8,
+    isComplete: summary.isComplete,
+    accessEvents: logs.map(formatAccessLog),
+    deniedAccessLogs: logs.filter((log) => String(log.result).toUpperCase() === "DENY").map(formatAccessLog),
+    firstInTime: summary.firstInTime,
+    lastOutTime: summary.lastOutTime,
+    hasActivity:
+      Boolean(summary.firstInTime) ||
+      Boolean(summary.lastOutTime) ||
+      summary.workingMinutes > 0 ||
+      summary.deniedLogCount > 0 ||
+      logs.length > 0
+  };
+}
+
+async function getEmployeeDailySummaries(employeeId, start, end) {
+  return prisma.employeeDailyAttendanceSummary.findMany({
+    where: {
+      employeeId,
+      workDate: {
+        gte: start,
+        lt: end
+      }
+    },
+    orderBy: {
+      workDate: "asc"
+    }
+  });
+}
+
+function summariesByDate(summaries) {
+  return new Map(summaries.map((summary) => [formatDate(summary.workDate), summary]));
+}
+
+function logsByDate(logs) {
+  const grouped = new Map();
+
+  for (const log of logs) {
+    const date = formatEventDate(log.eventTime);
+    grouped.set(date, [...(grouped.get(date) ?? []), log]);
+  }
+
+  return grouped;
+}
+
 async function getAttendanceSummary(query, scope) {
   const employeeId = await resolveScopedEmployeeId(query, scope);
   const start = startOfDay(parseDate(query.startDate, new Date()));
   const end = endOfDay(parseDate(query.endDate, start));
-  const logs = await getEmployeeLogs(
-    employeeId,
-    start,
-    new Date(end.getTime() + 1),
-  );
+  const exclusiveEnd = new Date(end.getTime() + 1);
+  const [logs, summaries] = await Promise.all([
+    getEmployeeLogs(employeeId, start, exclusiveEnd),
+    getEmployeeDailySummaries(employeeId, start, exclusiveEnd)
+  ]);
+  const summaryMap = summariesByDate(summaries);
+  const logMap = logsByDate(logs);
   const dailyRecords = [];
 
   for (let time = start.getTime(); time <= end.getTime(); time += DAY_MS) {
-    dailyRecords.push(calculateDailyWork(new Date(time), logs));
+    const date = new Date(time);
+    const dateKey = formatDate(date);
+    dailyRecords.push(summaryToDailyRecord(date, summaryMap.get(dateKey), logMap.get(dateKey) ?? []));
   }
 
   const totalWorkingHours = round(
@@ -777,12 +845,18 @@ async function getAttendanceSummary(query, scope) {
 async function getDailyAttendance(query, scope) {
   const employeeId = await resolveScopedEmployeeId(query, scope);
   const date = startOfDay(parseDate(query.date, new Date()));
-  const logs = await getEmployeeLogs(
-    employeeId,
-    date,
-    new Date(date.getTime() + DAY_MS),
-  );
-  const daily = calculateDailyWork(date, logs);
+  const [logs, summary] = await Promise.all([
+    getEmployeeLogs(employeeId, date, new Date(date.getTime() + DAY_MS)),
+    prisma.employeeDailyAttendanceSummary.findUnique({
+      where: {
+        employeeId_workDate: {
+          employeeId,
+          workDate: date
+        }
+      }
+    })
+  ]);
+  const daily = summaryToDailyRecord(date, summary, logs);
 
   return {
     employeeId: toNumber(employeeId),
@@ -792,21 +866,17 @@ async function getDailyAttendance(query, scope) {
 
 async function getTodayAttendanceStatus(query, scope) {
   const employeeId = await resolveScopedEmployeeId(query, scope);
-  const { start, end } = taipeiDayRange();
-  const logs = await getEmployeeLogs(employeeId, start, end);
-  const acceptedIn = logs.find(
-    (log) =>
-      String(log.result).toUpperCase() === "ACCEPT" &&
-      String(log.direction).toUpperCase() === "IN",
-  );
-  const hasDeniedAccessLog = logs.some(
-    (log) => String(log.result).toUpperCase() === "DENY",
-  );
-  const acceptedInTime = acceptedIn
-    ? interpretTimestampAsTaipei(acceptedIn.eventTime)
-    : null;
-  const estimatedOffWorkTime = acceptedInTime
-    ? new Date(acceptedInTime.getTime() + 2 * 8 * 60 * 60 * 1000)
+  const date = startOfDay(new Date());
+  const summary = await prisma.employeeDailyAttendanceSummary.findUnique({
+    where: {
+      employeeId_workDate: {
+        employeeId,
+        workDate: date
+      }
+    }
+  });
+  const estimatedOffWorkTime = summary?.firstInTime
+    ? new Date(summary.firstInTime.getTime() + 8 * 60 * 60 * 1000)
     : null;
   const remainingMinutes = estimatedOffWorkTime
     ? Math.max(
@@ -820,14 +890,12 @@ async function getTodayAttendanceStatus(query, scope) {
 
   return {
     employeeId: toNumber(employeeId),
-    hasCheckInToday: Boolean(acceptedIn),
-    estimatedOffWorkTime: estimatedOffWorkTime?.toISOString() ?? null,
-    remainingMinutes,
-    calculable: Boolean(acceptedIn),
-    message: acceptedIn
-      ? `You have ${remainingMinutes} minutes remaining.`
-      : "目前無法計算",
-    hasDeniedAccessLog,
+    hasCheckInToday: Boolean(summary?.firstInTime),
+    estimatedOffWorkTime: summary?.lastOutTime ? summary.lastOutTime.toISOString() : estimatedOffWorkTime?.toISOString() ?? null,
+    remainingMinutes: summary?.lastOutTime ? 0 : remainingMinutes,
+    calculable: Boolean(summary?.firstInTime),
+    message: summary?.firstInTime ? `You have ${summary?.lastOutTime ? 0 : remainingMinutes} minutes remaining.` : "目前無法計算",
+    hasDeniedAccessLog: (summary?.deniedLogCount ?? 0) > 0
   };
 }
 
@@ -971,20 +1039,25 @@ async function updateAccessLogStatus(logId, body, scope) {
 
 async function getPresenceSummary(query, scope) {
   const siteId = toBigInt(query.siteId);
-  const [latestLogs, employeeCount] = await Promise.all([
-    latestAcceptedLogs(siteId, scope),
+  const [insideCount, employeeCount] = await Promise.all([
+    prisma.employeeAccessState.count({
+      where: {
+        employeeId: {
+          in: scope.employeeIds
+        },
+currentState: "INSIDE",
+        ...(siteId ? { siteId } : {})
+      }
+    }),
     prisma.employee.count({
       where: {
         employeeId: {
-          in: scope.employeeIds,
+          in: scope.employeeIds
         },
-        isActive: true,
-      },
-    }),
+        isActive: true
+      }
+    })
   ]);
-  const insideCount = latestLogs.filter(
-    (log) => String(log.direction).toUpperCase() === "IN",
-  ).length;
   const outsideCount = Math.max(0, employeeCount - insideCount);
 
   return {
@@ -1002,39 +1075,53 @@ async function getPresenceEmployees(query, scope) {
   const siteId = toBigInt(query.siteId);
   const keyword = toText(query.keyword);
   const jobLevelId = toInt(query.jobLevelId);
-  const latestLogs = await latestAcceptedLogs(siteId, scope);
-  const insideLogs = latestLogs.filter(
-    (log) => String(log.direction).toUpperCase() === "IN",
-  );
+  const states = await prisma.employeeAccessState.findMany({
+    where: {
+      employeeId: {
+        in: scope.employeeIds
+      },
+      currentState: "INSIDE",
+      ...(siteId ? { siteId } : {}),
+      employee: {
+        isActive: true,
+        ...(keyword
+          ? {
+              OR: [
+                { employeeName: { contains: keyword, mode: "insensitive" } },
+                { email: { contains: keyword, mode: "insensitive" } },
+                { phone: { contains: keyword, mode: "insensitive" } },
+                { jobTitle: { contains: keyword, mode: "insensitive" } }
+              ]
+            }
+          : {})
+      }
+    },
+    include: {
+      employee: {
+        include: {
+          department: true
+        }
+      }
+    },
+    orderBy: {
+      lastEventTime: "desc"
+    }
+  });
 
-  const employees = insideLogs
-    .filter((log) => {
-      const employee = log.employee;
-      const keywordMatches =
-        !keyword ||
-        [
-          employee.employeeName,
-          employee.email,
-          employee.phone,
-          employee.jobTitle,
-        ].some((value) => value.toLowerCase().includes(keyword.toLowerCase()));
-      return (
-        keywordMatches &&
-        (!jobLevelId || inferJobLevel(employee).jobLevelId === jobLevelId)
-      );
-    })
-    .map((log) => ({
-      employeeId: toNumber(log.employeeId),
-      employeeName: log.employee.employeeName,
-      jobTitle: log.employee.jobTitle,
-      jobLevelName: inferJobLevel(log.employee).jobLevelName,
-      email: log.employee.email,
-      phone: log.employee.phone,
-      departmentId: toNumber(log.employee.departmentId),
-      departmentName: log.employee.department?.departmentName ?? null,
-      siteId: toNumber(log.siteId),
+  const employees = states
+    .filter((state) => !jobLevelId || inferJobLevel(state.employee).jobLevelId === jobLevelId)
+    .map((state) => ({
+      employeeId: toNumber(state.employeeId),
+      employeeName: state.employee.employeeName,
+      jobTitle: state.employee.jobTitle,
+      jobLevelName: inferJobLevel(state.employee).jobLevelName,
+      email: state.employee.email,
+      phone: state.employee.phone,
+      departmentId: toNumber(state.employee.departmentId),
+      departmentName: state.employee.department?.departmentName ?? null,
+      siteId: toNumber(state.siteId),
       isInside: true,
-      lastAccessTime: log.eventTime.toISOString(),
+      lastAccessTime: state.lastEventTime?.toISOString() ?? null
     }));
 
   return {
@@ -1068,16 +1155,21 @@ async function getMonthlyAttendanceReport(employeeId, query, scope) {
   }
 
   const { start, end } = monthRange(yearMonth);
-  const logs = await getEmployeeLogs(employeeId, start, end);
+  const [logs, summaries] = await Promise.all([
+    getEmployeeLogs(employeeId, start, end),
+    getEmployeeDailySummaries(employeeId, start, end)
+  ]);
+  const summaryMap = summariesByDate(summaries);
+  const logMap = logsByDate(logs);
   const dailyRecords = [];
 
   for (let time = start.getTime(); time < end.getTime(); time += DAY_MS) {
-    dailyRecords.push(calculateDailyWork(new Date(time), logs));
+    const date = new Date(time);
+    const dateKey = formatDate(date);
+    dailyRecords.push(summaryToDailyRecord(date, summaryMap.get(dateKey), logMap.get(dateKey) ?? []));
   }
 
-  const activeRecords = dailyRecords.filter(
-    (record) => record.accessEvents.length > 0,
-  );
+  const activeRecords = dailyRecords.filter((record) => record.hasActivity);
   const divisor = activeRecords.length || dailyRecords.length || 1;
   const totalWorkingHours = round(
     dailyRecords.reduce((sum, record) => sum + record.workingHours, 0),
@@ -1117,32 +1209,32 @@ async function allDailyWorkRecords(start, end, scope, options = {}) {
     },
   });
   const employeeIds = employees.map((employee) => employee.employeeId);
-  const logs = employeeIds.length
-    ? await prisma.accessLog.findMany({
-        where: {
-          employeeId: {
-            in: employeeIds,
-          },
-          eventTime: {
-            gte: start,
-            lt: end,
-          },
+  const summaries = employeeIds.length
+    ? await prisma.employeeDailyAttendanceSummary.findMany({
+      where: {
+        employeeId: {
+          in: employeeIds
         },
-        include: accessLogInclude(),
-        orderBy: {
-          eventTime: "asc",
-        },
-      })
+        workDate: {
+          gte: start,
+          lt: end
+        }
+      },
+      orderBy: {
+        workDate: "asc"
+      }
+    })
     : [];
 
   return employees.map((employee) => {
-    const employeeLogs = logs.filter(
-      (log) => log.employeeId === employee.employeeId,
+    const summaryMap = summariesByDate(
+      summaries.filter((summary) => summary.employeeId === employee.employeeId)
     );
     const dailyRecords = [];
 
     for (let time = start.getTime(); time < end.getTime(); time += DAY_MS) {
-      dailyRecords.push(calculateDailyWork(new Date(time), employeeLogs));
+      const date = new Date(time);
+      dailyRecords.push(summaryToDailyRecord(date, summaryMap.get(formatDate(date))));
     }
 
     return { employee, dailyRecords };
@@ -1165,7 +1257,7 @@ async function getTeamMonthlyStatistics(query, scope) {
   });
   const employeeCount = recordsByEmployee.length;
   const activeRecords = recordsByEmployee.flatMap((item) =>
-    item.dailyRecords.filter((record) => record.accessEvents.length > 0),
+    item.dailyRecords.filter((record) => record.hasActivity)
   );
   const activeDates = new Set(activeRecords.map((record) => record.date));
   const totalWorkingHours = activeRecords.reduce(
@@ -1176,21 +1268,13 @@ async function getTeamMonthlyStatistics(query, scope) {
     ? round(totalWorkingHours / (employeeCount * activeDates.size || 1))
     : 0;
   const checkIns = activeRecords
-    .map((record) =>
-      record.accessEvents.find(
-        (log) => log.result === "ACCEPT" && log.direction === "IN",
-      ),
-    )
+    .map((record) => record.firstInTime)
     .filter(Boolean)
-    .map((log) => new Date(log.eventTime));
+    .map((time) => new Date(time));
   const checkOuts = activeRecords
-    .map((record) =>
-      [...record.accessEvents]
-        .reverse()
-        .find((log) => log.result === "ACCEPT" && log.direction === "OUT"),
-    )
+    .map((record) => record.lastOutTime)
     .filter(Boolean)
-    .map((log) => new Date(log.eventTime));
+    .map((time) => new Date(time));
   const averageTime = (dates) => {
     if (!dates.length) return null;
     const minutes =
@@ -1251,7 +1335,7 @@ async function getTeamWorkloadTrend(query, scope) {
       },
     );
     const records = recordsByEmployee.flatMap((item) =>
-      item.dailyRecords.filter((record) => record.accessEvents.length > 0),
+      item.dailyRecords.filter((record) => record.hasActivity)
     );
     data.push({
       period: period.label,
@@ -1292,12 +1376,8 @@ async function getStayHourDistribution(query, scope) {
     const records = recordsByEmployee
       .map((item) => item.dailyRecords.find((record) => record.date === date))
       .filter(Boolean);
-    const totalStayHours = round(
-      records.reduce((sum, record) => sum + record.workingHours, 0),
-    );
-    const activeEmployeeCount = records.filter(
-      (record) => record.accessEvents.length > 0,
-    ).length;
+    const totalStayHours = round(records.reduce((sum, record) => sum + record.workingHours, 0));
+    const activeEmployeeCount = records.filter((record) => record.hasActivity).length;
 
     dailyAverages.push({
       date,
