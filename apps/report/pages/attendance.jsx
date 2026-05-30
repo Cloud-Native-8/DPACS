@@ -269,6 +269,7 @@ export default function AttendanceQueryPage() {
     () => toAttendanceRows(displaySummary, dateRange),
     [displaySummary, dateRange],
   );
+  const hasNoRemainingTime = todayStatus?.remainingMinutes === 0;
 
   const setRangePreset = (preset) => {
     if (preset === "week") {
@@ -354,13 +355,20 @@ export default function AttendanceQueryPage() {
                   <KpiCard
                     label="預估下班時間"
                     value={
-                      toDisplayTime(todayStatus?.estimatedOffWorkTime) || "-"
+                      hasNoRemainingTime
+                        ? "-"
+                        : toDisplayTime(todayStatus?.estimatedOffWorkTime) ||
+                          "-"
                     }
                     tone="violet"
                   />
                   <KpiCard
                     label="剩餘時數"
-                    value={formatRemainingHours(todayStatus?.remainingMinutes)}
+                    value={
+                      hasNoRemainingTime
+                        ? "-"
+                        : formatRemainingHours(todayStatus?.remainingMinutes)
+                    }
                     tone="violet"
                   />
                 </div>
