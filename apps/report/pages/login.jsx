@@ -37,8 +37,7 @@ export default function LoginPage() {
         localStorage.setItem("token", data.token);
         localStorage.setItem("employee", JSON.stringify(data.employee));
 
-        // const nextPath = typeof router.query.next === "string" ? router.query.next : "/realtime";
-        const nextPath = "/realtime";
+        const nextPath = data.employee?.isManager ? "/realtime" : "/attendance";
 
         router.push(nextPath);
       })
