@@ -93,17 +93,6 @@ const groupLogsByDate = (logs) => {
   return grouped;
 };
 
-const pickEvents = (logs, direction) => {
-  return logs
-    .filter(
-      (log) =>
-        String(log.result).toUpperCase() === "ACCEPT" &&
-        String(log.direction).toUpperCase() === direction,
-    )
-    .map((log) => log.eventTime)
-    .filter(Boolean);
-};
-
 const toDeniedRow = (log, date) => {
   const direction = String(log.direction).toUpperCase();
   const time = toDisplayTime(log.eventTime);
@@ -116,6 +105,50 @@ const toDeniedRow = (log, date) => {
     anomaly: formatAnomalyReason(log.reason),
     isAnomaly: true,
   };
+};
+
+const buildAcceptedRows = (logs, date) => {
+  const rows = [];
+  let openRow = null;
+
+  logs.forEach((log) => {
+    const direction = String(log.direction).toUpperCase();
+    const time = toDisplayTime(log.eventTime);
+
+    if (!time) return;
+
+    if (direction === "IN") {
+      openRow = {
+        key: `accept-${log.logId ?? log.eventTime}`,
+        date,
+        inTimes: [time],
+        outTimes: [],
+        anomaly: "",
+        isAnomaly: false,
+      };
+      rows.push(openRow);
+      return;
+    }
+
+    if (direction === "OUT" && openRow && openRow.outTimes.length === 0) {
+      openRow.outTimes = [time];
+      openRow = null;
+      return;
+    }
+
+    if (direction === "OUT") {
+      rows.push({
+        key: `accept-${log.logId ?? log.eventTime}`,
+        date,
+        inTimes: [],
+        outTimes: [time],
+        anomaly: "",
+        isAnomaly: false,
+      });
+    }
+  });
+
+  return rows;
 };
 
 const toAttendanceRows = (summary, dateRange) => {
@@ -136,15 +169,16 @@ const toAttendanceRows = (summary, dateRange) => {
     const deniedLogs = logs.filter(
       (log) => String(log.result).toUpperCase() === "DENY",
     );
-    const inTimes = pickEvents(acceptedLogs, "IN");
-    const outTimes = pickEvents(acceptedLogs, "OUT");
+    const acceptedRows = buildAcceptedRows(acceptedLogs, date);
 
-    if (acceptedLogs.length > 0 || logs.length === 0) {
+    if (acceptedRows.length > 0) {
+      dateRows.push(...acceptedRows);
+    } else if (logs.length === 0) {
       dateRows.push({
         key: `date-${date}`,
         date,
-        inTimes: inTimes.map(toDisplayTime).filter(Boolean),
-        outTimes: outTimes.map(toDisplayTime).filter(Boolean),
+        inTimes: [],
+        outTimes: [],
         anomaly: "",
         isAnomaly: false,
       });
