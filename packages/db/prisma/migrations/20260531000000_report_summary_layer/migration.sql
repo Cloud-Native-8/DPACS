@@ -64,7 +64,9 @@ BEGIN
   WITH accepted_in AS (
     SELECT
       "event_time",
-      row_number() OVER (ORDER BY "event_time", "log_id") AS rn
+      "log_id",
+      lead("event_time") OVER (ORDER BY "event_time", "log_id") AS next_in_time,
+      lead("log_id") OVER (ORDER BY "event_time", "log_id") AS next_in_log_id
     FROM "access_log"
     WHERE "employee_id" = p_employee_id
       AND "result" = 'Accept'
@@ -72,23 +74,36 @@ BEGIN
       AND "event_time" >= p_work_date
       AND "event_time" < p_work_date + INTERVAL '1 day'
   ),
-  accepted_out AS (
-    SELECT
-      "event_time",
-      row_number() OVER (ORDER BY "event_time", "log_id") AS rn
-    FROM "access_log"
-    WHERE "employee_id" = p_employee_id
-      AND "result" = 'Accept'
-      AND lower("direction") = 'out'
-      AND "event_time" >= p_work_date
-      AND "event_time" < p_work_date + INTERVAL '1 day'
-  ),
   paired AS (
     SELECT
       accepted_in."event_time" AS in_time,
-      accepted_out."event_time" AS out_time
+      (
+        SELECT out_log."event_time"
+        FROM "access_log" out_log
+        WHERE out_log."employee_id" = p_employee_id
+          AND out_log."result" = 'Accept'
+          AND lower(out_log."direction") = 'out'
+          AND out_log."event_time" >= p_work_date
+          AND out_log."event_time" < p_work_date + INTERVAL '1 day'
+          AND (
+            out_log."event_time" > accepted_in."event_time"
+            OR (
+              out_log."event_time" = accepted_in."event_time"
+              AND out_log."log_id" > accepted_in."log_id"
+            )
+          )
+          AND (
+            accepted_in.next_in_time IS NULL
+            OR out_log."event_time" < accepted_in.next_in_time
+            OR (
+              out_log."event_time" = accepted_in.next_in_time
+              AND out_log."log_id" < accepted_in.next_in_log_id
+            )
+          )
+        ORDER BY out_log."event_time", out_log."log_id"
+        LIMIT 1
+      ) AS out_time
     FROM accepted_in
-    LEFT JOIN accepted_out ON accepted_out.rn = accepted_in.rn
   )
   SELECT
     min(in_time),
