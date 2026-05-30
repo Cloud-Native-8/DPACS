@@ -149,6 +149,15 @@ function taipeiDayRange(date = new Date()) {
   return { start, end };
 }
 
+function taipeiWorkDate(date = new Date()) {
+  const { year, month, day } = taipeiDateParts(date);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function taipeiClockTimestamp(date = new Date()) {
+  return new Date(date.getTime() + 8 * 60 * 60 * 1000);
+}
+
 function interpretTimestampAsTaipei(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
     return null;
@@ -866,35 +875,48 @@ async function getDailyAttendance(query, scope) {
 
 async function getTodayAttendanceStatus(query, scope) {
   const employeeId = await resolveScopedEmployeeId(query, scope);
-  const date = startOfDay(new Date());
-  const summary = await prisma.employeeDailyAttendanceSummary.findUnique({
-    where: {
-      employeeId_workDate: {
-        employeeId,
-        workDate: date
+  const date = taipeiWorkDate();
+  const [summary, state] = await Promise.all([
+    prisma.employeeDailyAttendanceSummary.findUnique({
+      where: {
+        employeeId_workDate: {
+          employeeId,
+          workDate: date
+        }
       }
-    }
-  });
-  const estimatedOffWorkTime = summary?.firstInTime
-    ? new Date(summary.firstInTime.getTime() + 8 * 60 * 60 * 1000)
+    }),
+    prisma.employeeAccessState.findUnique({
+      where: {
+        employeeId
+      }
+    })
+  ]);
+  const isInside = state?.currentState === "INSIDE";
+  const now = taipeiClockTimestamp();
+  const openSegmentMinutes =
+    isInside && state?.lastEventTime
+      ? Math.max(0, Math.round((now - state.lastEventTime) / 60000))
+      : 0;
+  const workedMinutes = (summary?.workingMinutes ?? 0) + openSegmentMinutes;
+  const remainingMinutes = summary?.firstInTime
+    ? isInside
+      ? Math.max(0, 480 - workedMinutes)
+      : 0
     : null;
-  const remainingMinutes = estimatedOffWorkTime
-    ? Math.max(
-        0,
-        Math.round(
-          (estimatedOffWorkTime - new Date(Date.now() + 8 * 60 * 60 * 1000)) /
-            60000,
-        ),
-      )
-    : null;
+  const estimatedOffWorkTime =
+    summary?.firstInTime && remainingMinutes !== null
+      ? isInside
+        ? new Date(now.getTime() + remainingMinutes * 60000)
+        : summary.lastOutTime
+      : null;
 
   return {
     employeeId: toNumber(employeeId),
     hasCheckInToday: Boolean(summary?.firstInTime),
-    estimatedOffWorkTime: summary?.lastOutTime ? summary.lastOutTime.toISOString() : estimatedOffWorkTime?.toISOString() ?? null,
-    remainingMinutes: summary?.lastOutTime ? 0 : remainingMinutes,
+    estimatedOffWorkTime: estimatedOffWorkTime?.toISOString() ?? null,
+    remainingMinutes,
     calculable: Boolean(summary?.firstInTime),
-    message: summary?.firstInTime ? `You have ${summary?.lastOutTime ? 0 : remainingMinutes} minutes remaining.` : "目前無法計算",
+    message: summary?.firstInTime ? `You have ${remainingMinutes} minutes remaining.` : "目前無法計算",
     hasDeniedAccessLog: (summary?.deniedLogCount ?? 0) > 0
   };
 }
