@@ -6,6 +6,7 @@ loadRootEnv();
 
 const args = process.argv.slice(2);
 const packagesArgIndex = args.indexOf("--packages");
+const skipTests = args.includes("--skip-tests");
 const selectedPackages = resolvePackages(
   packagesArgIndex === -1 ? "" : args[packagesArgIndex + 1]
 );
@@ -29,14 +30,16 @@ function run(command, args) {
   });
 }
 
-if (packagesArgIndex === -1) {
-  await run("pnpm", ["test"]);
-} else if (selectedPackages.length > 0) {
-  await run("pnpm", [
-    ...selectedPackages.flatMap((pkg) => ["--filter", pkg]),
-    "--if-present",
-    "test"
-  ]);
+if (!skipTests) {
+  if (packagesArgIndex === -1) {
+    await run("pnpm", ["test"]);
+  } else if (selectedPackages.length > 0) {
+    await run("pnpm", [
+      ...selectedPackages.flatMap((pkg) => ["--filter", pkg]),
+      "--if-present",
+      "test"
+    ]);
+  }
 }
 
 if (needsDbGenerate(selectedPackages)) {
