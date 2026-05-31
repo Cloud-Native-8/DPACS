@@ -509,6 +509,7 @@ DECLARE
     
     -- 動態決定該異常是否「已處理」
     anomaly_status BOOLEAN;
+    anomaly_note TEXT;
 BEGIN
     FOR current_day IN SELECT generate_series(start_date, end_date, '1 day'::interval)::date LOOP
         

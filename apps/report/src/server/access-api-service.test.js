@@ -49,6 +49,27 @@ async function loadTestTarget(t) {
 async function cleanup(prisma) {
   await prisma.$transaction(async (tx) => {
     await tx.$executeRawUnsafe("SET CONSTRAINTS ALL DEFERRED");
+    await tx.reportRefreshQueue.deleteMany({
+      where: {
+        employeeId: {
+          in: [ids.topManager, ids.childManager, ids.childEmployee, ids.outsideEmployee]
+        }
+      }
+    });
+    await tx.employeeDailyAttendanceSummary.deleteMany({
+      where: {
+        employeeId: {
+          in: [ids.topManager, ids.childManager, ids.childEmployee, ids.outsideEmployee]
+        }
+      }
+    });
+    await tx.employeeAccessState.deleteMany({
+      where: {
+        employeeId: {
+          in: [ids.topManager, ids.childManager, ids.childEmployee, ids.outsideEmployee]
+        }
+      }
+    });
     await tx.accessLog.deleteMany({
       where: {
         logId: {

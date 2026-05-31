@@ -9,7 +9,7 @@ spec:
     kind: Deployment
     name: access
   minReplicas: 2
-  maxReplicas: 10
+  maxReplicas: 7
   metrics:
     - type: Resource
       resource:

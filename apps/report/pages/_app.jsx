@@ -4,6 +4,22 @@ import "../styles/globals.css";
 import { getStoredToken } from "../src/lib/access-api-client.js";
 
 const publicPaths = new Set(["/login"]);
+const managerOnlyPaths = new Set(["/realtime", "/employee", "/trends", "/anomalies"]);
+
+function getHomePath(employee) {
+  return employee?.isManager === true ? "/realtime" : "/attendance";
+}
+
+function getStoredEmployee() {
+  const storedEmployee = localStorage.getItem("employee");
+  if (!storedEmployee) return null;
+
+  try {
+    return JSON.parse(storedEmployee);
+  } catch {
+    return null;
+  }
+}
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
@@ -12,17 +28,29 @@ export default function App({ Component, pageProps }) {
   useEffect(() => {
     if (!router.isReady) return;
 
+    setIsCheckingAuth(true);
+
+    const token = getStoredToken();
+    const employee = getStoredEmployee();
+
     if (publicPaths.has(router.pathname)) {
+      if (token) {
+        router.replace(getHomePath(employee));
+        return;
+      }
+
       setIsCheckingAuth(false);
       return;
     }
 
-    setIsCheckingAuth(true);
-
-    const token = getStoredToken();
     if (!token) {
       const next = encodeURIComponent(router.asPath);
-      router.replace(`/login?next=${next}`);
+      router.replace(`/login`);
+      return;
+    }
+
+    if (managerOnlyPaths.has(router.pathname) && employee?.isManager === false) {
+      router.replace("/attendance");
       return;
     }
 

@@ -105,9 +105,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
-      - run: pnpm install --frozen-lockfile
+      - id: install
+        run: pnpm install --frozen-lockfile
 
       - name: Wait for LocalStack
+        id: wait_localstack
         run: |
           for i in {1..30}; do
             if curl -fsS http://localhost:4566/_localstack/health >/dev/null; then
@@ -120,14 +122,64 @@ jobs:
           exit 1
 
       - name: Create SQS queue
+        id: create_sqs
         run: |
           aws --endpoint-url http://localhost:4566 sqs create-queue \
             --region ap-northeast-1 \
             --queue-name access-events
 
-      - run: pnpm --filter @repo/db migrate:deploy
+      - id: db_migrate
+        run: pnpm --filter @repo/db migrate:deploy
 
-      - run: node scripts/workspace-check.mjs --packages "${{ needs.detect-changes.outputs.packages }}"
+      - name: Run package tests and publish test report
+        id: test_report
+        run: node scripts/workspace-test-report.mjs --packages "${{ needs.detect-changes.outputs.packages }}"
+
+      - name: Run workspace build checks
+        id: workspace_check
+        run: node scripts/workspace-check.mjs --skip-tests --packages "${{ needs.detect-changes.outputs.packages }}"
+
+      - name: Publish rendered GitHub Actions summary
+        if: ${{ always() }}
+        env:
+          INSTALL_RESULT: ${{ steps.install.conclusion }}
+          LOCALSTACK_RESULT: ${{ steps.wait_localstack.conclusion }}
+          SQS_RESULT: ${{ steps.create_sqs.conclusion }}
+          DB_MIGRATE_RESULT: ${{ steps.db_migrate.conclusion }}
+          TEST_REPORT_RESULT: ${{ steps.test_report.conclusion }}
+          WORKSPACE_CHECK_RESULT: ${{ steps.workspace_check.conclusion }}
+          CHANGED_PACKAGES: ${{ needs.detect-changes.outputs.packages }}
+        run: |
+          status_label() {
+            case "$1" in
+              success) echo "✅ Success" ;;
+              failure) echo "❌ Failed" ;;
+              cancelled) echo "🚫 Cancelled" ;;
+              skipped) echo "⏭️ Skipped" ;;
+              *) echo "⚪ Not run" ;;
+            esac
+          }
+
+          add_row() {
+            echo "| $1 | $(status_label "$2") |"
+          }
+
+          {
+            echo "## CI test-build summary"
+            echo ""
+            echo "Rendered by GitHub Actions Job Summary as a table, so results are visible in the run UI without opening logs."
+            echo ""
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            add_row "Install dependencies" "$INSTALL_RESULT"
+            add_row "LocalStack readiness" "$LOCALSTACK_RESULT"
+            add_row "Create SQS queue" "$SQS_RESULT"
+            add_row "DB migration" "$DB_MIGRATE_RESULT"
+            add_row "Package tests" "$TEST_REPORT_RESULT"
+            add_row "Workspace build checks" "$WORKSPACE_CHECK_RESULT"
+            echo ""
+            echo "**Changed packages:** \`${CHANGED_PACKAGES:-none}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   docker-build:
     if: needs.detect-changes.outputs.images != '' && github.event_name == 'pull_request' && (github.base_ref == 'dev' || github.base_ref == 'main')

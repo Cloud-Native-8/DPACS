@@ -30,6 +30,16 @@ async function getParentDepartmentId(departmentId) {
   return parent?.ancestorDepartmentId ?? null;
 }
 
+async function isDepartmentManager(employeeId) {
+  const managedDepartmentCount = await prisma.department.count({
+    where: {
+      managerId: employeeId
+    }
+  });
+
+  return managedDepartmentCount > 0;
+}
+
 function formatDepartment(department, parentDepartmentId) {
   if (!department) return null;
 
@@ -43,7 +53,10 @@ function formatDepartment(department, parentDepartmentId) {
 }
 
 export async function formatEmployeeProfile(employee) {
-  const parentDepartmentId = await getParentDepartmentId(employee.departmentId);
+  const [parentDepartmentId, isManager] = await Promise.all([
+    getParentDepartmentId(employee.departmentId),
+    isDepartmentManager(employee.employeeId)
+  ]);
 
   return {
     employeeId: toNumber(employee.employeeId),
@@ -53,6 +66,7 @@ export async function formatEmployeeProfile(employee) {
     jobTitle: employee.jobTitle,
     department: formatDepartment(employee.department, parentDepartmentId),
     jobLevel: inferJobLevel(employee),
+    isManager,
     isActive: employee.isActive,
     createdAt: employee.createdAt?.toISOString() ?? null,
     updatedAt: employee.updatedAt?.toISOString() ?? null
