@@ -24,7 +24,8 @@ spec:
       serviceAccountName: access
       containers:
         - name: access
-          image: <account-id>.dkr.ecr.ap-northeast-1.amazonaws.com/access:latest
+          image: <account-id>.dkr.ecr.ap-northeast-1.amazonaws.com/access:<tag>
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 4000
           env:
@@ -45,9 +46,22 @@ spec:
                 secretKeyRef:
                   name: access-env
                   key: VALKEY_URL
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+              ephemeral-storage: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+              ephemeral-storage: "1Gi"
           readinessProbe:
             httpGet:
               path: /readyz
+              port: 4000
+          livenessProbe:
+            httpGet:
+              path: /healthz
               port: 4000
 ---
 apiVersion: v1

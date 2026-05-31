@@ -169,7 +169,7 @@ jobs:
           kubectl -n test delete job db-migrate --ignore-not-found
 
           sed \
-            "s|$ECR_REGISTRY/$ECR_NAMESPACE/db-migrate:latest|$ECR_REGISTRY/$ECR_NAMESPACE/db-migrate:$IMAGE_TAG|g" \
+            "s|$ECR_REGISTRY/$ECR_NAMESPACE/db-migrate:<tag>|$ECR_REGISTRY/$ECR_NAMESPACE/db-migrate:$IMAGE_TAG|g" \
             deploy/k8s/test/05-migrate-job.yaml \
             | kubectl apply -f -
 
@@ -184,17 +184,17 @@ jobs:
           set -euo pipefail
 
           sed \
-            "s|$ECR_REGISTRY/$ECR_NAMESPACE/access:latest|$ECR_REGISTRY/$ECR_NAMESPACE/access:$IMAGE_TAG|g" \
+            "s|$ECR_REGISTRY/$ECR_NAMESPACE/access:<tag>|$ECR_REGISTRY/$ECR_NAMESPACE/access:$IMAGE_TAG|g" \
             deploy/k8s/test/04-access.yaml \
             | kubectl apply -f -
 
           sed \
-            "s|$ECR_REGISTRY/$ECR_NAMESPACE/worker:latest|$ECR_REGISTRY/$ECR_NAMESPACE/worker:$IMAGE_TAG|g" \
+            "s|$ECR_REGISTRY/$ECR_NAMESPACE/worker:<tag>|$ECR_REGISTRY/$ECR_NAMESPACE/worker:$IMAGE_TAG|g" \
             deploy/k8s/test/06-worker.yaml \
             | kubectl apply -f -
 
           sed \
-            "s|$ECR_REGISTRY/$ECR_NAMESPACE/report:latest|$ECR_REGISTRY/$ECR_NAMESPACE/report:$IMAGE_TAG|g" \
+            "s|$ECR_REGISTRY/$ECR_NAMESPACE/report:<tag>|$ECR_REGISTRY/$ECR_NAMESPACE/report:$IMAGE_TAG|g" \
             deploy/k8s/test/07-report.yaml \
             | kubectl apply -f -
 

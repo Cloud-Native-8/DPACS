@@ -453,6 +453,8 @@ Kubernetes manifests 位於：
 deploy/k8s/
 ```
 
+其中 application manifests 會保留 `:<tag>` placeholder；手動部署時請先替換成實際 image tag，GitHub Actions deploy workflows 會自動注入對應 tag。
+
 ## 疑難排解
 
 ### Docker 沒有啟動

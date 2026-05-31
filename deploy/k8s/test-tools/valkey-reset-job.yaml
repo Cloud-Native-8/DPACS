@@ -8,17 +8,30 @@ spec:
   ttlSecondsAfterFinished: 300
   template:
     spec:
+      automountServiceAccountToken: false
       restartPolicy: Never
       containers:
         - name: valkey-flush
-          image: valkey/valkey:latest
+          image: valkey/valkey:9.0.3-alpine
           imagePullPolicy: IfNotPresent
+          env:
+            - name: VALKEY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: access-env
+                  key: VALKEY_URL
           command:
             - sh
             - -c
           args:
             - |
-              valkey-cli --tls --insecure \
-                -h dpacs-qq2arq.serverless.apne1.cache.amazonaws.com \
-                -p 6379 \
-                FLUSHALL
+              valkey-cli -u "$VALKEY_URL" FLUSHALL
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+              ephemeral-storage: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
+              ephemeral-storage: "256Mi"

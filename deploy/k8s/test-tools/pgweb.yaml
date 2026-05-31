@@ -13,9 +13,10 @@ spec:
       labels:
         app: pgweb
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: pgweb
-          image: sosedoff/pgweb:latest
+          image: sosedoff/pgweb:0.16.2
           imagePullPolicy: IfNotPresent
           envFrom:
             - secretRef:
@@ -34,6 +35,15 @@ spec:
 
               echo "Starting pgweb..."
               pgweb --bind=0.0.0.0 --listen=8081 --url "$URL"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+              ephemeral-storage: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+              ephemeral-storage: "1Gi"
 ---
 apiVersion: v1
 kind: Service

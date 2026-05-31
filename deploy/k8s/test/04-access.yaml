@@ -16,8 +16,8 @@ spec:
       serviceAccountName: access
       containers:
         - name: access
-          image: 390402574827.dkr.ecr.ap-northeast-1.amazonaws.com/dpacs/access:latest
-          imagePullPolicy: Always
+          image: 390402574827.dkr.ecr.ap-northeast-1.amazonaws.com/dpacs/access:<tag>
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 4000
           env:
@@ -49,9 +49,11 @@ spec:
             requests:
               cpu: "100m"
               memory: "128Mi"
+              ephemeral-storage: "256Mi"
             limits:
               cpu: "500m"
               memory: "512Mi"
+              ephemeral-storage: "1Gi"
 
           readinessProbe:
             httpGet:

@@ -24,7 +24,8 @@ spec:
       serviceAccountName: worker
       containers:
         - name: worker
-          image: <account-id>.dkr.ecr.ap-northeast-1.amazonaws.com/worker:latest
+          image: <account-id>.dkr.ecr.ap-northeast-1.amazonaws.com/worker:<tag>
+          imagePullPolicy: IfNotPresent
           env:
             - name: NODE_ENV
               value: production
@@ -45,3 +46,12 @@ spec:
                 secretKeyRef:
                   name: worker-env
                   key: DATABASE_URL
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+              ephemeral-storage: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+              ephemeral-storage: "1Gi"

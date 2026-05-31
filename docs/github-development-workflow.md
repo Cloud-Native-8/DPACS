@@ -153,6 +153,8 @@ PR 階段不會觸發：
 - 只跑一次 migration
 - `report` 保持現況不動
 
+`deploy/k8s/test/*.yaml` 內的 image 會保留 `:<tag>` placeholder，workflow 會在執行時替換成你填入的實際 tag。
+
 ### `release-test`
 
 用途是整套 release deploy 到 EKS `test` namespace。
@@ -170,6 +172,8 @@ PR 階段不會觸發：
 2. 跑 `db-migrate:<image_tag>`
 3. 把 `access`、`worker`、`report` 全部更新成同一個 tag
 4. 等待 rollout 完成
+
+同樣地，workflow 會在 apply 前把 `deploy/k8s/test/*.yaml` 內的 `:<tag>` placeholder 換成你輸入的 `image_tag`。
 
 這個 workflow 適合：
 
@@ -194,6 +198,8 @@ PR 階段不會觸發：
 4. 跑 `db-migrate:<github.sha>`
 5. 把 `access`、`worker`、`report` 全部更新成 `:<github.sha>`
 6. 等待 rollout 完成
+
+這條 workflow 也會在 apply 前把 `deploy/k8s/test/*.yaml` 中的 `:<tag>` placeholder 換成 `github.sha`。
 
 這個 workflow 適合：
 

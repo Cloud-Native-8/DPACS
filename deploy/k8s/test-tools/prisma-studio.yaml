@@ -13,10 +13,11 @@ spec:
       labels:
         app: prisma-studio
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: prisma-studio
-          image: 390402574827.dkr.ecr.ap-northeast-1.amazonaws.com/dpacs/db-migrate:latest
-          imagePullPolicy: Always
+          image: 390402574827.dkr.ecr.ap-northeast-1.amazonaws.com/dpacs/db-migrate:<tag>
+          imagePullPolicy: IfNotPresent
           envFrom:
             - secretRef:
                 name: migrator-env
@@ -27,6 +28,15 @@ spec:
             - -c
           args:
             - cd /repo/packages/db && pnpm prisma studio --browser none --port 5555 --url "$DATABASE_URL"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+              ephemeral-storage: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+              ephemeral-storage: "1Gi"
 ---
 apiVersion: v1
 kind: Service

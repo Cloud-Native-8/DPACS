@@ -13,6 +13,7 @@ spec:
       labels:
         app: access-check-loadgen
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: access-check-loadgen
           image: curlimages/curl:8.8.0
@@ -121,6 +122,8 @@ spec:
             requests:
               cpu: "100m"
               memory: "64Mi"
+              ephemeral-storage: "128Mi"
             limits:
               cpu: "1000m"
               memory: "256Mi"
+              ephemeral-storage: "512Mi"
