@@ -1445,6 +1445,34 @@ function jobLevels() {
   };
 }
 
+function isSegmentRoute(segments, ...parts) {
+  if (segments.length !== parts.length) {
+    return false;
+  }
+
+  return parts.every((part, index) => segments[index] === part);
+}
+
+async function handleCatalogEntityRoutes({ method, segments, query, scope }) {
+  if (method === "GET" && isSegmentRoute(segments, "employees", segments[1])) {
+    return getEmployee(toBigInt(segments[1]), scope);
+  }
+
+  if (method === "GET" && isSegmentRoute(segments, "sites", segments[1], "access-points")) {
+    return listAccessPoints(toBigInt(segments[1]));
+  }
+
+  if (method === "GET" && joinedAccessStatusRoute(segments)) {
+    return getAccessStatus(toBigInt(segments[1]), query, scope);
+  }
+
+  return undefined;
+}
+
+function joinedAccessStatusRoute(segments) {
+  return isSegmentRoute(segments, "employees", segments[1], "access-status");
+}
+
 async function handleCatalogRoutes({ method, joined, segments, query, scope }) {
   if (method === "GET" && joined === "/departments") {
     return listDepartments(scope);
@@ -1452,10 +1480,6 @@ async function handleCatalogRoutes({ method, joined, segments, query, scope }) {
 
   if (method === "GET" && joined === "/employees") {
     return listEmployees(query, scope);
-  }
-
-  if (method === "GET" && segments[0] === "employees" && segments.length === 2) {
-    return getEmployee(toBigInt(segments[1]), scope);
   }
 
   if (method === "GET" && joined === "/job-levels") {
@@ -1474,11 +1498,7 @@ async function handleCatalogRoutes({ method, joined, segments, query, scope }) {
     return listAccessLogs(query, scope);
   }
 
-  if (method === "GET" && segments[0] === "employees" && segments[2] === "access-status") {
-    return getAccessStatus(toBigInt(segments[1]), query, scope);
-  }
-
-  return undefined;
+  return handleCatalogEntityRoutes({ method, segments, query, scope });
 }
 
 async function handleSelfServiceRoutes({ method, joined, query, scope }) {
@@ -1519,16 +1539,6 @@ async function handleManagerReportRoutes({ method, joined, segments, query, scop
     return getPresenceEmployees(query, scope);
   }
 
-  if (
-    method === "GET" &&
-    segments[0] === "manager" &&
-    segments[1] === "reports" &&
-    segments[2] === "employees" &&
-    segments[4] === "monthly-attendance"
-  ) {
-    return getMonthlyAttendanceReport(toBigInt(segments[3]), query, scope);
-  }
-
   if (method === "GET" && joined === "/manager/reports/team/workload-trend") {
     return getTeamWorkloadTrend(query, scope);
   }
@@ -1545,13 +1555,19 @@ async function handleManagerReportRoutes({ method, joined, segments, query, scop
     return getDeniedAccessLogs(query, scope);
   }
 
-  if (
-    method === "GET" &&
-    segments[0] === "manager" &&
-    segments[1] === "reports" &&
-    segments[2] === "denied-access-logs" &&
-    segments.length === 4
-  ) {
+  return handleManagerReportEntityRoutes({ method, segments, query, scope });
+}
+
+async function handleManagerReportEntityRoutes({ method, segments, query, scope }) {
+  if (method !== "GET") {
+    return undefined;
+  }
+
+  if (isSegmentRoute(segments, "manager", "reports", "employees", segments[3], "monthly-attendance")) {
+    return getMonthlyAttendanceReport(toBigInt(segments[3]), query, scope);
+  }
+
+  if (isSegmentRoute(segments, "manager", "reports", "denied-access-logs", segments[3])) {
     return getDeniedAccessLogDetail(toBigInt(segments[3]), scope);
   }
 

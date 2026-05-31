@@ -1,5 +1,5 @@
 export const getStoredToken = () => {
-  if (typeof globalThis.window === "undefined") return null;
+  if (globalThis.window === undefined) return null;
 
   return localStorage.getItem("token");
 };

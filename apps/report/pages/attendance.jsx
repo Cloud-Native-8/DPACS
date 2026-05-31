@@ -24,6 +24,12 @@ const getDefaultDateRange = (today = new Date()) => ({
   end: getDateInputValue(today),
 });
 
+const getEarlierDateValue = (...values) =>
+  [...values].sort((left, right) => left.localeCompare(right))[0];
+
+const getLaterDateValue = (...values) =>
+  [...values].sort((left, right) => left.localeCompare(right)).at(-1);
+
 const toShortDate = (dateKey) => {
   const [, month, day] = dateKey.split("-");
   return `${month}/${day}`;
@@ -291,11 +297,11 @@ export default function AttendanceQueryPage() {
   const handleDateChange = (field, value) => {
     setDateRange((current) => {
       if (field === "start") {
-        const end = value > current.end ? value : current.end;
+        const end = getLaterDateValue(value, current.end);
         return { start: value, end };
       }
 
-      const start = value < current.start ? value : current.start;
+      const start = getEarlierDateValue(value, current.start);
       return {
         start,
         end: value,

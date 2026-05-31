@@ -140,7 +140,7 @@ export default function Sidebar({ activePage }) {
         <span className="inline-flex h-5 w-5 items-center justify-center">
           <Icon name="logout" className="text-slate-500" />
         </span>
-        登出
+        <span>登出</span>
       </button>
     </aside>
   );

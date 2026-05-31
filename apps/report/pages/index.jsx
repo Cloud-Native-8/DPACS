@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import Link from "next/link";
 import { getReportData } from "../src/server/report-service.js";
 import { reportShape } from "../src/lib/prop-types.js";
