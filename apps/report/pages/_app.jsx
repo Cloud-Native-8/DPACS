@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import "../styles/globals.css";
@@ -44,8 +45,7 @@ export default function App({ Component, pageProps }) {
     }
 
     if (!token) {
-      const next = encodeURIComponent(router.asPath);
-      router.replace(`/login`);
+      router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
       return;
     }
 
@@ -63,3 +63,8 @@ export default function App({ Component, pageProps }) {
 
   return <Component {...pageProps} />;
 }
+
+App.propTypes = {
+  Component: PropTypes.elementType.isRequired,
+  pageProps: PropTypes.object.isRequired,
+};

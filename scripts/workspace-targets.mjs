@@ -50,6 +50,50 @@ function isDocumentationOnly(file) {
   return file.endsWith(".md") || file.startsWith("docs/");
 }
 
+function fullRebuildResult(file) {
+  return {
+    mode: "full",
+    shouldRun: true,
+    packages: [...ALL_PACKAGES],
+    images: [...ALL_IMAGES],
+    reasons: [file],
+  };
+}
+
+function addTargetsForFile(file, packages, images) {
+  if (file.startsWith("apps/access/")) {
+    packages.add("@repo/access");
+    images.add("access");
+    return true;
+  }
+
+  if (file.startsWith("apps/report/")) {
+    packages.add("@repo/report");
+    images.add("report");
+    return true;
+  }
+
+  if (file.startsWith("apps/worker/")) {
+    packages.add("@repo/worker");
+    images.add("worker");
+    return true;
+  }
+
+  if (file.startsWith("packages/db/")) {
+    addAll(packages, ["@repo/db", "@repo/report", "@repo/worker"]);
+    addAll(images, ["db-migrate", "report", "worker"]);
+    return true;
+  }
+
+  if (file.startsWith("packages/queue/")) {
+    addAll(packages, ["@repo/queue", "@repo/access", "@repo/worker"]);
+    addAll(images, ["access", "worker"]);
+    return true;
+  }
+
+  return false;
+}
+
 export function resolvePackages(csv) {
   if (!csv) {
     return [...ALL_PACKAGES];
@@ -82,7 +126,6 @@ export function needsDbGenerate(packages) {
 export function analyzeChangedFiles(files) {
   const packages = new Set();
   const images = new Set();
-  const reasons = [];
   const ignored = [];
 
   for (const rawFile of files) {
@@ -96,14 +139,7 @@ export function analyzeChangedFiles(files) {
       FULL_REBUILD_FILES.has(file) ||
       hasPrefix(file, FULL_REBUILD_PREFIXES)
     ) {
-      reasons.push(file);
-      return {
-        mode: "full",
-        shouldRun: true,
-        packages: [...ALL_PACKAGES],
-        images: [...ALL_IMAGES],
-        reasons,
-      };
+      return fullRebuildResult(file);
     }
 
     if (isDocumentationOnly(file)) {
@@ -111,44 +147,11 @@ export function analyzeChangedFiles(files) {
       continue;
     }
 
-    if (file.startsWith("apps/access/")) {
-      packages.add("@repo/access");
-      images.add("access");
+    if (addTargetsForFile(file, packages, images)) {
       continue;
     }
 
-    if (file.startsWith("apps/report/")) {
-      packages.add("@repo/report");
-      images.add("report");
-      continue;
-    }
-
-    if (file.startsWith("apps/worker/")) {
-      packages.add("@repo/worker");
-      images.add("worker");
-      continue;
-    }
-
-    if (file.startsWith("packages/db/")) {
-      addAll(packages, ["@repo/db", "@repo/report", "@repo/worker"]);
-      addAll(images, ["db-migrate", "report", "worker"]);
-      continue;
-    }
-
-    if (file.startsWith("packages/queue/")) {
-      addAll(packages, ["@repo/queue", "@repo/access", "@repo/worker"]);
-      addAll(images, ["access", "worker"]);
-      continue;
-    }
-
-    reasons.push(file);
-    return {
-      mode: "full",
-      shouldRun: true,
-      packages: [...ALL_PACKAGES],
-      images: [...ALL_IMAGES],
-      reasons,
-    };
+    return fullRebuildResult(file);
   }
 
   if (packages.size === 0 && images.size === 0) {

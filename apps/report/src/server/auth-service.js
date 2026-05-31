@@ -83,7 +83,7 @@ async function findActiveEmployeeByEmail(email) {
     }
   });
 
-  if (!employee || !employee.isActive) {
+  if (!employee?.isActive) {
     return null;
   }
 
@@ -100,7 +100,7 @@ async function findActiveEmployeeById(employeeId) {
     }
   });
 
-  if (!employee || !employee.isActive) {
+  if (!employee?.isActive) {
     return null;
   }
 

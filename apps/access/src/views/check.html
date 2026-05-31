@@ -123,8 +123,8 @@
       const result = document.getElementById("result");
 
       const ACCESS_BASE_PATH =
-        window.location.pathname === "/access" ||
-        window.location.pathname.startsWith("/access/")
+        globalThis.location.pathname === "/access" ||
+        globalThis.location.pathname.startsWith("/access/")
           ? "/access"
           : "";
 

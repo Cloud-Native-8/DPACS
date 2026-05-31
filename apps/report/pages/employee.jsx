@@ -72,7 +72,8 @@ export default function EmployeeViewPage() {
     setError("");
 
     try {
-      const data = await fetchAccessApi(`/api/employees${params.size ? `?${params}` : ""}`, token);
+      const employeeQuery = params.size ? `?${params}` : "";
+      const data = await fetchAccessApi(`/api/employees${employeeQuery}`, token);
       const nextEmployees = (data.employees ?? []).map(mapEmployee);
 
       setEmployees(nextEmployees);
@@ -162,6 +163,32 @@ export default function EmployeeViewPage() {
     };
   }, [monthlyReport]);
 
+  let employeeDropdownContent = (
+    <p className="px-4 py-3 text-sm text-slate-500">查無符合員工</p>
+  );
+
+  if (isEmployeeLoading) {
+    employeeDropdownContent = <p className="px-4 py-3 text-sm text-slate-500">搜尋中</p>;
+  } else if (filteredEmployees.length > 0) {
+    employeeDropdownContent = filteredEmployees.map((employee) => (
+      <button
+        key={employee.id}
+        type="button"
+        onClick={() => {
+          setSelectedEmployee(employee);
+          setSearch(employee.name);
+          setIsDropdownOpen(false);
+        }}
+        className="w-full border-b border-slate-100 px-4 py-3 text-left text-sm transition hover:bg-slate-100 last:border-b-0"
+      >
+        <p className="font-medium text-slate-950">{employee.name}</p>
+        <p className="mt-1 text-xs text-slate-500">
+          {employee.department}・{employee.contact}
+        </p>
+      </button>
+    ));
+  }
+
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-950 sm:px-6 lg:px-10">
       <div className="mx-auto grid max-w-[1500px] gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -185,29 +212,7 @@ export default function EmployeeViewPage() {
 
                 {isDropdownOpen && search && (
                   <div className="absolute z-10 mt-2 max-h-64 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-lg">
-                    {isEmployeeLoading ? (
-                      <p className="px-4 py-3 text-sm text-slate-500">搜尋中</p>
-                    ) : filteredEmployees.length > 0 ? (
-                      filteredEmployees.map((employee) => (
-                        <button
-                          key={employee.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedEmployee(employee);
-                            setSearch(employee.name);
-                            setIsDropdownOpen(false);
-                          }}
-                          className="w-full border-b border-slate-100 px-4 py-3 text-left text-sm transition hover:bg-slate-100 last:border-b-0"
-                        >
-                          <p className="font-medium text-slate-950">{employee.name}</p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {employee.department}・{employee.contact}
-                          </p>
-                        </button>
-                      ))
-                    ) : (
-                      <p className="px-4 py-3 text-sm text-slate-500">查無符合員工</p>
-                    )}
+                    {employeeDropdownContent}
                   </div>
                 )}
               </div>

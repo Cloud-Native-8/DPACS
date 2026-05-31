@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import { useEffect, useMemo, useState } from "react";
 import DateRangeFilter from "../components/DateRangeFilter.jsx";
 import Sidebar from "../components/Sidebar.jsx";
@@ -36,7 +37,7 @@ const toDisplayTime = (value) => {
 
 const formatHours = (value) => {
   if (value === undefined || value === null) return "-";
-  return Number.isInteger(value) ? String(value) : String(value);
+  return String(value);
 };
 
 const formatRemainingHours = (minutes) => {
@@ -54,15 +55,15 @@ const formatAnomalyReason = (reason) => {
     return "沒有進入任何場域的紀錄";
   }
 
-  const duplicateEntryMatch = normalized.match(
-    /employee must exit site (\d+) before any new entry/,
+  const duplicateEntryMatch = /employee must exit site (\d+) before any new entry/.exec(
+    normalized,
   );
   if (duplicateEntryMatch) {
     return `需先離開場域 ${duplicateEntryMatch[1]} 才能再次進入`;
   }
 
-  const sameSiteExitMatch = normalized.match(
-    /employee must exit the same site they entered \((\d+)\)/,
+  const sameSiteExitMatch = /employee must exit the same site they entered \((\d+)\)/.exec(
+    normalized,
   );
   if (sameSiteExitMatch) {
     return `需從原本進入的同一場域 ${sameSiteExitMatch[1]} 離開`;
@@ -130,7 +131,7 @@ const buildAcceptedRows = (logs, date) => {
       return;
     }
 
-    if (direction === "OUT" && openRow && openRow.outTimes.length === 0) {
+    if (direction === "OUT" && openRow?.outTimes.length === 0) {
       openRow.outTimes = [time];
       openRow = null;
       return;
@@ -222,6 +223,12 @@ const KpiCard = ({ label, value, tone = "blue" }) => {
   );
 };
 
+KpiCard.propTypes = {
+  label: PropTypes.string.isRequired,
+  value: PropTypes.string.isRequired,
+  tone: PropTypes.string,
+};
+
 export default function AttendanceQueryPage() {
   const today = useMemo(() => new Date(), []);
   const defaultRange = useMemo(() => getDefaultDateRange(today), [today]);
@@ -230,8 +237,6 @@ export default function AttendanceQueryPage() {
   const [todayStatus, setTodayStatus] = useState(null);
   const [error, setError] = useState("");
   const displaySummary = summary;
-  // const previewSummary = useMemo(() => buildPreviewSummary(dateRange), [dateRange]);
-  // const displaySummary = summary?.accessLogs?.length ? summary : previewSummary;
 
   useEffect(() => {
     let isMounted = true;
@@ -286,10 +291,13 @@ export default function AttendanceQueryPage() {
   const handleDateChange = (field, value) => {
     setDateRange((current) => {
       if (field === "start") {
-        return { start: value, end: value > current.end ? value : current.end };
+        const end = value > current.end ? value : current.end;
+        return { start: value, end };
       }
+
+      const start = value < current.start ? value : current.start;
       return {
-        start: value < current.start ? value : current.start,
+        start,
         end: value,
       };
     });

@@ -2,15 +2,15 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { ApiError } from "./api-error.js";
 
 function base64UrlDecode(value) {
-  return Buffer.from(value.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+  return Buffer.from(value.replaceAll("-", "+").replaceAll("_", "/"), "base64");
 }
 
 function base64UrlEncode(value) {
   return Buffer.from(value)
     .toString("base64")
     .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
+    .replaceAll("+", "-")
+    .replaceAll("/", "_");
 }
 
 function jsonBase64Url(value) {

@@ -38,14 +38,12 @@ function toNumber(value) {
 }
 
 function uniqueBigInts(values) {
-  return [...new Set(values.map((value) => value.toString()))].map((value) =>
-    BigInt(value),
-  );
+  return [...new Set(values.map((value) => value.toString()))].map(BigInt);
 }
 
 function isVisibleEmployee(scope, employeeId) {
   const id = BigInt(employeeId);
-  return scope.employeeIds.some((visibleId) => visibleId === id);
+  return scope.employeeIds.includes(id);
 }
 
 function ensureVisibleEmployee(scope, employeeId) {
@@ -156,6 +154,26 @@ function taipeiWorkDate(date = new Date()) {
 
 function taipeiClockTimestamp(date = new Date()) {
   return new Date(date.getTime() + 8 * 60 * 60 * 1000);
+}
+
+function buildTodayStatusMessage(hasCheckInToday, remainingMinutes) {
+  if (!hasCheckInToday) {
+    return "目前無法計算";
+  }
+
+  return `You have ${remainingMinutes} minutes remaining.`;
+}
+
+function accessLogOrderBy(sortBy, order) {
+  if (sortBy === "employeeName") {
+    return { employee: { employeeName: order } };
+  }
+
+  if (sortBy === "reason") {
+    return { reason: order };
+  }
+
+  return { eventTime: order };
 }
 
 function interpretTimestampAsTaipei(date) {
@@ -893,30 +911,31 @@ async function getTodayAttendanceStatus(query, scope) {
   ]);
   const isInside = state?.currentState === "INSIDE";
   const now = taipeiClockTimestamp();
-  const openSegmentMinutes =
-    isInside && state?.lastEventTime
-      ? Math.max(0, Math.round((now - state.lastEventTime) / 60000))
-      : 0;
+  let openSegmentMinutes = 0;
+
+  if (isInside && state?.lastEventTime) {
+    openSegmentMinutes = Math.max(0, Math.round((now - state.lastEventTime) / 60000));
+  }
+
   const workedMinutes = (summary?.workingMinutes ?? 0) + openSegmentMinutes;
-  const remainingMinutes = summary?.firstInTime
-    ? isInside
-      ? Math.max(0, 480 - workedMinutes)
-      : 0
-    : null;
-  const estimatedOffWorkTime =
-    summary?.firstInTime && remainingMinutes !== null
-      ? isInside
-        ? new Date(now.getTime() + remainingMinutes * 60000)
-        : summary.lastOutTime
-      : null;
+  const hasCheckInToday = Boolean(summary?.firstInTime);
+  let remainingMinutes = null;
+  let estimatedOffWorkTime = null;
+
+  if (hasCheckInToday) {
+    remainingMinutes = isInside ? Math.max(0, 480 - workedMinutes) : 0;
+    estimatedOffWorkTime = isInside
+      ? new Date(now.getTime() + remainingMinutes * 60000)
+      : summary.lastOutTime;
+  }
 
   return {
     employeeId: toNumber(employeeId),
-    hasCheckInToday: Boolean(summary?.firstInTime),
+    hasCheckInToday,
     estimatedOffWorkTime: estimatedOffWorkTime?.toISOString() ?? null,
     remainingMinutes,
-    calculable: Boolean(summary?.firstInTime),
-    message: summary?.firstInTime ? `You have ${remainingMinutes} minutes remaining.` : "目前無法計算",
+    calculable: hasCheckInToday,
+    message: buildTodayStatusMessage(hasCheckInToday, remainingMinutes),
     hasDeniedAccessLog: (summary?.deniedLogCount ?? 0) > 0
   };
 }
@@ -945,12 +964,7 @@ async function getDeniedAccessLogs(query, scope) {
   const logs = await prisma.accessLog.findMany({
     where,
     include: accessLogInclude(),
-    orderBy:
-      sortBy === "employeeName"
-        ? { employee: { employeeName: order } }
-        : sortBy === "reason"
-          ? { reason: order }
-          : { eventTime: order },
+    orderBy: accessLogOrderBy(sortBy, order),
   });
 
   return {
@@ -1431,6 +1445,141 @@ function jobLevels() {
   };
 }
 
+async function handleCatalogRoutes({ method, joined, segments, query, scope }) {
+  if (method === "GET" && joined === "/departments") {
+    return listDepartments(scope);
+  }
+
+  if (method === "GET" && joined === "/employees") {
+    return listEmployees(query, scope);
+  }
+
+  if (method === "GET" && segments[0] === "employees" && segments.length === 2) {
+    return getEmployee(toBigInt(segments[1]), scope);
+  }
+
+  if (method === "GET" && joined === "/job-levels") {
+    return jobLevels();
+  }
+
+  if (method === "GET" && joined === "/sites") {
+    return listSites();
+  }
+
+  if (method === "GET" && segments[0] === "sites" && segments[2] === "access-points") {
+    return listAccessPoints(toBigInt(segments[1]));
+  }
+
+  if (method === "GET" && joined === "/access-logs") {
+    return listAccessLogs(query, scope);
+  }
+
+  if (method === "GET" && segments[0] === "employees" && segments[2] === "access-status") {
+    return getAccessStatus(toBigInt(segments[1]), query, scope);
+  }
+
+  return undefined;
+}
+
+async function handleSelfServiceRoutes({ method, joined, query, scope }) {
+  const currentEmployeeId = toNumber(scope.currentEmployeeId);
+
+  if (method === "GET" && joined === "/me/attendance/summary") {
+    return getAttendanceSummary({ ...query, employeeId: currentEmployeeId }, scope);
+  }
+
+  if (method === "GET" && joined === "/me/attendance/daily") {
+    return getDailyAttendance({ ...query, employeeId: currentEmployeeId }, scope);
+  }
+
+  if (method === "GET" && joined === "/me/attendance/today-status") {
+    return getTodayAttendanceStatus({ employeeId: currentEmployeeId }, scope);
+  }
+
+  if (method === "GET" && joined === "/me/attendance/denied-access-logs") {
+    return listAccessLogs(
+      {
+        ...query,
+        employeeId: currentEmployeeId,
+        result: "Deny",
+      },
+      scope,
+    );
+  }
+
+  return undefined;
+}
+
+async function handleManagerReportRoutes({ method, joined, segments, query, scope }) {
+  if (method === "GET" && joined === "/manager/reports/presence/summary") {
+    return getPresenceSummary(query, scope);
+  }
+
+  if (method === "GET" && joined === "/manager/reports/presence/employees") {
+    return getPresenceEmployees(query, scope);
+  }
+
+  if (
+    method === "GET" &&
+    segments[0] === "manager" &&
+    segments[1] === "reports" &&
+    segments[2] === "employees" &&
+    segments[4] === "monthly-attendance"
+  ) {
+    return getMonthlyAttendanceReport(toBigInt(segments[3]), query, scope);
+  }
+
+  if (method === "GET" && joined === "/manager/reports/team/workload-trend") {
+    return getTeamWorkloadTrend(query, scope);
+  }
+
+  if (method === "GET" && joined === "/manager/reports/team/monthly-statistics") {
+    return getTeamMonthlyStatistics(query, scope);
+  }
+
+  if (method === "GET" && joined === "/manager/reports/team/stay-hour-distribution") {
+    return getStayHourDistribution(query, scope);
+  }
+
+  if (method === "GET" && joined === "/manager/reports/denied-access-logs") {
+    return getDeniedAccessLogs(query, scope);
+  }
+
+  if (
+    method === "GET" &&
+    segments[0] === "manager" &&
+    segments[1] === "reports" &&
+    segments[2] === "denied-access-logs" &&
+    segments.length === 4
+  ) {
+    return getDeniedAccessLogDetail(toBigInt(segments[3]), scope);
+  }
+
+  return undefined;
+}
+
+async function handleManagerMutationRoutes({ method, segments, body, scope }) {
+  if (
+    method === "PATCH" &&
+    segments[0] === "manager" &&
+    segments[1] === "access-logs" &&
+    segments[3] === "note"
+  ) {
+    return updateAccessLogNote(toBigInt(segments[2]), body, scope);
+  }
+
+  if (
+    method === "PATCH" &&
+    segments[0] === "manager" &&
+    segments[1] === "access-logs" &&
+    segments[3] === "status"
+  ) {
+    return updateAccessLogStatus(toBigInt(segments[2]), body, scope);
+  }
+
+  return undefined;
+}
+
 export async function handleAccessApiRequest({
   method,
   path,
@@ -1446,111 +1595,27 @@ export async function handleAccessApiRequest({
   const joined = `/${segments.join("/")}`;
   const scope = await getVisibleEmployeeScope(currentUser);
 
-  if (method === "GET" && joined === "/departments")
-    return listDepartments(scope);
-  if (method === "GET" && joined === "/employees")
-    return listEmployees(query, scope);
-  if (
-    method === "GET" &&
-    segments[0] === "employees" &&
-    segments.length === 2
-  ) {
-    return getEmployee(toBigInt(segments[1]), scope);
-  }
-  if (method === "GET" && joined === "/job-levels") return jobLevels();
-  if (method === "GET" && joined === "/sites") return listSites();
-  if (
-    method === "GET" &&
-    segments[0] === "sites" &&
-    segments[2] === "access-points"
-  ) {
-    return listAccessPoints(toBigInt(segments[1]));
-  }
-  if (method === "GET" && joined === "/access-logs")
-    return listAccessLogs(query, scope);
-  if (
-    method === "GET" &&
-    segments[0] === "employees" &&
-    segments[2] === "access-status"
-  ) {
-    return getAccessStatus(toBigInt(segments[1]), query, scope);
-  }
-  if (method === "GET" && joined === "/me/attendance/summary") {
-    return getAttendanceSummary(
-      { ...query, employeeId: toNumber(scope.currentEmployeeId) },
-      scope,
-    );
-  }
-  if (method === "GET" && joined === "/me/attendance/daily") {
-    return getDailyAttendance(
-      { ...query, employeeId: toNumber(scope.currentEmployeeId) },
-      scope,
-    );
-  }
-  if (method === "GET" && joined === "/me/attendance/today-status") {
-    return getTodayAttendanceStatus(
-      { employeeId: toNumber(scope.currentEmployeeId) },
-      scope,
-    );
-  }
-  if (method === "GET" && joined === "/me/attendance/denied-access-logs") {
-    return listAccessLogs(
-      {
-        ...query,
-        employeeId: toNumber(scope.currentEmployeeId),
-        result: "Deny",
-      },
-      scope,
-    );
-  }
-  if (method === "GET" && joined === "/manager/reports/presence/summary")
-    return getPresenceSummary(query, scope);
-  if (method === "GET" && joined === "/manager/reports/presence/employees")
-    return getPresenceEmployees(query, scope);
-  if (
-    method === "GET" &&
-    segments[0] === "manager" &&
-    segments[1] === "reports" &&
-    segments[2] === "employees" &&
-    segments[4] === "monthly-attendance"
-  ) {
-    return getMonthlyAttendanceReport(toBigInt(segments[3]), query, scope);
-  }
-  if (method === "GET" && joined === "/manager/reports/team/workload-trend")
-    return getTeamWorkloadTrend(query, scope);
-  if (method === "GET" && joined === "/manager/reports/team/monthly-statistics")
-    return getTeamMonthlyStatistics(query, scope);
-  if (
-    method === "GET" &&
-    joined === "/manager/reports/team/stay-hour-distribution"
-  )
-    return getStayHourDistribution(query, scope);
-  if (method === "GET" && joined === "/manager/reports/denied-access-logs")
-    return getDeniedAccessLogs(query, scope);
-  if (
-    method === "GET" &&
-    segments[0] === "manager" &&
-    segments[1] === "reports" &&
-    segments[2] === "denied-access-logs" &&
-    segments.length === 4
-  ) {
-    return getDeniedAccessLogDetail(toBigInt(segments[3]), scope);
-  }
-  if (
-    method === "PATCH" &&
-    segments[0] === "manager" &&
-    segments[1] === "access-logs" &&
-    segments[3] === "note"
-  ) {
-    return updateAccessLogNote(toBigInt(segments[2]), body, scope);
-  }
-  if (
-    method === "PATCH" &&
-    segments[0] === "manager" &&
-    segments[1] === "access-logs" &&
-    segments[3] === "status"
-  ) {
-    return updateAccessLogStatus(toBigInt(segments[2]), body, scope);
+  const routeContext = {
+    method,
+    joined,
+    segments,
+    query,
+    body,
+    scope,
+  };
+  const handlers = [
+    handleCatalogRoutes,
+    handleSelfServiceRoutes,
+    handleManagerReportRoutes,
+    handleManagerMutationRoutes,
+  ];
+
+  for (const handler of handlers) {
+    const result = await handler(routeContext);
+
+    if (result !== undefined) {
+      return result;
+    }
   }
 
   throw new ApiError(

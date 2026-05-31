@@ -1,5 +1,7 @@
+import PropTypes from "prop-types";
 import { accessDirectionLabels } from "../src/lib/access-labels.js";
 import { formatTime } from "../src/lib/date-format.js";
+import { employeeAccessRecordShape } from "../src/lib/prop-types.js";
 import ModalShell from "./ModalShell.jsx";
 
 export default function EmployeeAccessRecordsModal({ record, onClose }) {
@@ -70,48 +72,12 @@ export default function EmployeeAccessRecordsModal({ record, onClose }) {
             )}
           </div>
         </div>
-
-        {/* <div>
-          <h3 className="text-sm font-semibold text-slate-950">異常 / 拒絕紀錄</h3>
-
-          <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200">
-            {(record.deniedAccessLogs ?? []).length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full table-fixed text-left text-sm">
-                  <thead className="bg-slate-100 text-xs text-slate-500">
-                    <tr>
-                      <th className="w-[120px] px-4 py-3 font-medium">時間</th>
-                      <th className="w-[80px] px-4 py-3 font-medium">方向</th>
-                      <th className="w-[200px] px-4 py-3 font-medium">原因</th>
-                      <th className="w-[220px] px-4 py-3 font-medium">地點</th>
-                      <th className="px-4 py-3 font-medium">備註</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {record.deniedAccessLogs.map((log) => (
-                      <tr key={log.logId} className="hover:bg-slate-50">
-                        <td className="px-4 py-3 font-medium text-slate-950">
-                          {formatTime(log.eventTime)}
-                        </td>
-                        <td className="px-4 py-3 text-slate-700">
-                          {accessDirectionLabels[log.direction] ?? log.direction}
-                        </td>
-                        <td className="px-4 py-3 text-slate-700">{log.reason}</td>
-                        <td className="px-4 py-3 text-slate-700">
-                          {log.siteName} / {log.accessPointName}
-                        </td>
-                        <td className="px-4 py-3 text-red-500">{log.note || "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="p-4 text-sm text-slate-500">當日沒有異常或拒絕紀錄</p>
-            )}
-          </div>
-        </div> */}
       </div>
     </ModalShell>
   );
 }
+
+EmployeeAccessRecordsModal.propTypes = {
+  record: employeeAccessRecordShape,
+  onClose: PropTypes.func.isRequired,
+};

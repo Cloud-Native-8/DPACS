@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
@@ -217,6 +216,8 @@ jobs:
     if: needs.detect-changes.outputs.images != '' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ECR_REGISTRY != '' && vars.AWS_ROLE_TO_ASSUME != ''
     needs: [detect-changes, test-build]
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
 
     steps:
       - uses: actions/checkout@v5

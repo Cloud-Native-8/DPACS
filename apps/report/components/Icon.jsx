@@ -1,3 +1,5 @@
+import PropTypes from "prop-types";
+
 export default function Icon({ name, className = "" }) {
   const iconProps = {
     xmlns: "http://www.w3.org/2000/svg",
@@ -80,6 +82,15 @@ export default function Icon({ name, className = "" }) {
   }
 }
 
+Icon.propTypes = {
+  name: PropTypes.string.isRequired,
+  className: PropTypes.string,
+};
+
 export function SelectChevron({ className = "h-4 w-4" }) {
   return <Icon name="chevron-down" className={className} />;
 }
+
+SelectChevron.propTypes = {
+  className: PropTypes.string,
+};

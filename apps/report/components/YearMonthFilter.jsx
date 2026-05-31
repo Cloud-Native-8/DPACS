@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import { SelectChevron } from "./Icon.jsx";
 
 const getYearOptions = (startYear, currentYear) => {
@@ -44,9 +45,7 @@ export default function YearMonthFilter({
 
     onChange({
       year: nextYear,
-      month: nextMonths.includes(selectedMonth)
-        ? selectedMonth
-        : nextMonths[nextMonths.length - 1]
+      month: nextMonths.includes(selectedMonth) ? selectedMonth : nextMonths.at(-1)
     });
   };
 
@@ -97,3 +96,11 @@ export default function YearMonthFilter({
     </div>
   );
 }
+
+YearMonthFilter.propTypes = {
+  startYear: PropTypes.number,
+  selectedYear: PropTypes.number.isRequired,
+  selectedMonth: PropTypes.number.isRequired,
+  currentDate: PropTypes.instanceOf(Date),
+  onChange: PropTypes.func.isRequired,
+};

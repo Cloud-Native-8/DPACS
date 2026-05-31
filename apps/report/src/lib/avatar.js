@@ -7,7 +7,7 @@ export const getInitials = (name) =>
 
 const getHueFromText = (text) => {
   const hash = text.split("").reduce((sum, character) => {
-    return sum + character.charCodeAt(0);
+    return sum + (character.codePointAt(0) ?? 0);
   }, 0);
 
   return hash % 360;

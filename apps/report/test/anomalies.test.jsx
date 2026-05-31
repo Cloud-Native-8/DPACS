@@ -58,7 +58,7 @@ describe("AnomaliesPage", () => {
     setupPageTest();
     getStoredToken.mockReturnValue("test-token");
     getApiUrl.mockImplementation((path) => path);
-    global.fetch = vi.fn();
+    globalThis.fetch = vi.fn();
   });
 
   it("loads and renders denied access logs", async () => {
@@ -109,7 +109,7 @@ describe("AnomaliesPage", () => {
 
   it("updates the selected anomaly status", async () => {
     installAnomalySuccessMock();
-    global.fetch.mockResolvedValue({
+    globalThis.fetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ ...anomalyLog, status: true })
     });
@@ -121,7 +121,7 @@ describe("AnomaliesPage", () => {
     await user.click(await screen.findByLabelText("已確認"));
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         "/api/manager/access-logs/log-1/status",
         expect.objectContaining({
           method: "PATCH",
@@ -134,7 +134,7 @@ describe("AnomaliesPage", () => {
 
   it("shows an update error without changing the status", async () => {
     installAnomalySuccessMock();
-    global.fetch.mockResolvedValue({
+    globalThis.fetch.mockResolvedValue({
       ok: false,
       json: () => Promise.resolve({ message: "狀態更新失敗" })
     });

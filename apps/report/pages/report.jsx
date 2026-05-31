@@ -1,4 +1,6 @@
+import PropTypes from "prop-types";
 import { getReportData } from "../src/server/report-service.js";
+import { reportShape } from "../src/lib/prop-types.js";
 
 export async function getServerSideProps() {
   return {
@@ -82,3 +84,7 @@ export default function ReportPage({ report }) {
     </main>
   );
 }
+
+ReportPage.propTypes = {
+  report: reportShape.isRequired,
+};

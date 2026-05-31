@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getInitials } from "../src/lib/avatar.js";
@@ -51,10 +52,19 @@ const NavButton = ({ item }) => (
       <span className="inline-flex h-5 w-5 items-center justify-center">
         <Icon name={item.icon} className={item.active ? "text-white" : "text-slate-600"} />
       </span>
-      {item.label}
+      <span>{item.label}</span>
     </button>
   </Link>
 );
+
+NavButton.propTypes = {
+  item: PropTypes.shape({
+    label: PropTypes.string.isRequired,
+    href: PropTypes.string.isRequired,
+    icon: PropTypes.string.isRequired,
+    active: PropTypes.bool.isRequired,
+  }).isRequired,
+};
 
 export default function Sidebar({ activePage }) {
   const [employee, setEmployee] = useState(null);
@@ -85,7 +95,7 @@ export default function Sidebar({ activePage }) {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("employee");
-    window.location.href = "/login";
+    globalThis.location.href = "/login";
   };
 
   return (
@@ -135,3 +145,7 @@ export default function Sidebar({ activePage }) {
     </aside>
   );
 }
+
+Sidebar.propTypes = {
+  activePage: PropTypes.string.isRequired,
+};

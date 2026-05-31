@@ -39,12 +39,14 @@ pnpm dev:access
 - `AWS_REGION`
 - `SQS_ENDPOINT`
 - `SQS_QUEUE_URL`
+- `ACCESS_CORS_ORIGINS`
 
 ## 上 AWS 需要調整
 
 - `VALKEY_URL` 改成 AWS 上的 Valkey/Redis 端點
 - 移除本地 `SQS_ENDPOINT`
 - `SQS_QUEUE_URL` 改成正式 SQS queue URL
+- `ACCESS_CORS_ORIGINS` 設成允許呼叫 access API 的前端 origin 清單，逗號分隔
 - Pod 不放 AWS key，改用 IRSA
 - 用 [apps/access/Dockerfile](/Users/slowpoke/Documents/雲原生/cloud-native-8/apps/access/Dockerfile) build image
 - 用 [deploy/k8s/access.yaml](/Users/slowpoke/Documents/雲原生/cloud-native-8/deploy/k8s/access.yaml) 部署

@@ -5,7 +5,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
@@ -104,6 +103,8 @@ jobs:
     concurrency:
       group: release-build-test
       cancel-in-progress: false
+    permissions:
+      id-token: write
 
     env:
       IMAGE_TAG: ${{ github.sha }}

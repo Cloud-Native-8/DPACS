@@ -1,5 +1,7 @@
+import PropTypes from "prop-types";
 import Link from "next/link";
 import { getReportData } from "../src/server/report-service.js";
+import { reportShape } from "../src/lib/prop-types.js";
 
 export async function getServerSideProps() {
   return {
@@ -260,3 +262,7 @@ export default function HomePage({ report }) {
     </main>
   );
 }
+
+HomePage.propTypes = {
+  report: reportShape.isRequired,
+};

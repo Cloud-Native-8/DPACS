@@ -51,12 +51,10 @@ export default function RealTimePeoplePage() {
     setError("");
 
     try {
+      const employeeQuery = params.size ? `?${params}` : "";
       const [summaryData, employeesData] = await Promise.all([
         fetchAccessApi("/api/manager/reports/presence/summary", token),
-        fetchAccessApi(
-          `/api/manager/reports/presence/employees${params.size ? `?${params}` : ""}`,
-          token
-        )
+        fetchAccessApi(`/api/manager/reports/presence/employees${employeeQuery}`, token)
       ]);
 
       setSummary({
@@ -76,10 +74,10 @@ export default function RealTimePeoplePage() {
   useEffect(() => {
     loadPresenceData();
 
-    const intervalId = window.setInterval(loadPresenceData, 30000);
+    const intervalId = globalThis.setInterval(loadPresenceData, 30000);
 
     return () => {
-      window.clearInterval(intervalId);
+      globalThis.clearInterval(intervalId);
     };
   }, [loadPresenceData]);
 
@@ -93,6 +91,36 @@ export default function RealTimePeoplePage() {
         .includes(keyword)
     );
   }, [people, search]);
+
+  let peopleContent = (
+    <p className="px-6 py-8 text-center text-sm text-slate-500">
+      目前沒有在辦公室的人員
+    </p>
+  );
+
+  if (isLoading) {
+    peopleContent = <p className="px-6 py-8 text-center text-sm text-slate-500">載入中</p>;
+  } else if (filteredPeople.length) {
+    peopleContent = filteredPeople.map((person) => (
+      <div
+        key={person.id}
+        className="grid grid-cols-4 items-center gap-4 px-6 py-4 text-sm text-slate-700 sm:grid-cols-[2fr_1fr_1fr_1fr]"
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-semibold"
+            style={person.avatarStyle}
+          >
+            {getInitials(person.name)}
+          </div>
+          <span>{person.name}</span>
+        </div>
+        <span className="text-slate-500">{person.department}</span>
+        <span className="text-slate-500">{person.role}</span>
+        <span className="text-slate-500">{person.contact}</span>
+      </div>
+    ));
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-950 sm:px-6 lg:px-10">
@@ -158,30 +186,7 @@ export default function RealTimePeoplePage() {
                 <span>聯絡資訊</span>
               </div>
               <div className="divide-y divide-slate-200">
-                {isLoading ? (
-                  <p className="px-6 py-8 text-center text-sm text-slate-500">載入中</p>
-                ) : filteredPeople.length ? (
-                  filteredPeople.map((person) => (
-                  <div key={person.id} className="grid items-center grid-cols-4 gap-4 px-6 py-4 text-sm text-slate-700 sm:grid-cols-[2fr_1fr_1fr_1fr]">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-semibold"
-                        style={person.avatarStyle}
-                      >
-                        {getInitials(person.name)}
-                      </div>
-                      <span>{person.name}</span>
-                    </div>
-                    <span className="text-slate-500">{person.department}</span>
-                    <span className="text-slate-500">{person.role}</span>
-                    <span className="text-slate-500">{person.contact}</span>
-                  </div>
-                  ))
-                ) : (
-                  <p className="px-6 py-8 text-center text-sm text-slate-500">
-                    目前沒有在辦公室的人員
-                  </p>
-                )}
+                {peopleContent}
               </div>
             </div>
           </div>

@@ -93,8 +93,8 @@ test.describe("Integration Tests (Valkey + SQS)", () => {
       if (keys.length > 0) {
         await client.del(keys);
       }
-    } catch (err) {
-      // ignore cleanup errors
+    } catch (error) {
+      console.warn("valkey cleanup failed before integration test", error);
     }
   });
 
@@ -105,8 +105,8 @@ test.describe("Integration Tests (Valkey + SQS)", () => {
       if (keys.length > 0) {
         await client.del(keys);
       }
-    } catch (err) {
-      // ignore cleanup errors
+    } catch (error) {
+      console.warn("valkey cleanup failed after integration test", error);
     }
   });
 

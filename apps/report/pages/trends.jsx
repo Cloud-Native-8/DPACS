@@ -1,8 +1,13 @@
+import PropTypes from "prop-types";
 import { useEffect, useMemo, useState } from "react";
 import Sidebar from "../components/Sidebar.jsx";
 import { SelectChevron } from "../components/Icon.jsx";
 import YearMonthFilter from "../components/YearMonthFilter.jsx";
 import { fetchAccessApi, getStoredToken } from "../src/lib/access-api-client.js";
+import {
+  departmentShape,
+  stayHourDistributionShape,
+} from "../src/lib/prop-types.js";
 
 const formatYearMonth = ({ year, month }) => {
   return `${year}-${String(month).padStart(2, "0")}`;
@@ -91,6 +96,12 @@ const DepartmentSelect = ({ departments, value, onChange }) => {
   );
 };
 
+DepartmentSelect.propTypes = {
+  departments: PropTypes.arrayOf(departmentShape).isRequired,
+  value: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+};
+
 const KpiCard = ({ label, value, unit, diff }) => (
   <div className="rounded-[1.75rem] bg-blue-50 p-6 shadow-sm shadow-slate-900/5">
     <p className="text-sm font-medium text-slate-600">{label}</p>
@@ -107,6 +118,13 @@ const KpiCard = ({ label, value, unit, diff }) => (
     </div>
   </div>
 );
+
+KpiCard.propTypes = {
+  label: PropTypes.string.isRequired,
+  value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  unit: PropTypes.string,
+  diff: PropTypes.string.isRequired,
+};
 
 const MonthlyHeatmap = ({ distribution }) => {
   const cells = buildCalendarCells(distribution?.dailyAverages);
@@ -177,6 +195,10 @@ const MonthlyHeatmap = ({ distribution }) => {
       )}
     </div>
   );
+};
+
+MonthlyHeatmap.propTypes = {
+  distribution: stayHourDistributionShape,
 };
 
 export default function TrendsPage() {

@@ -126,22 +126,24 @@ export function createSqsClient() {
   const endpoint = process.env.SQS_ENDPOINT || undefined;
   const accessKeyId = process.env.AWS_ACCESS_KEY_ID || "";
   const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY || "";
+  let credentials;
+
+  if (accessKeyId && secretAccessKey) {
+    credentials = {
+      accessKeyId,
+      secretAccessKey,
+    };
+  } else if (endpoint) {
+    credentials = {
+      accessKeyId: "test",
+      secretAccessKey: "test",
+    };
+  }
 
   return new SQSClient({
     region: required("AWS_REGION"),
     endpoint,
-    credentials:
-      accessKeyId && secretAccessKey
-        ? {
-            accessKeyId,
-            secretAccessKey,
-          }
-        : endpoint
-          ? {
-              accessKeyId: "test",
-              secretAccessKey: "test",
-            }
-          : undefined,
+    credentials,
   });
 }
 

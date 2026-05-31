@@ -1,3 +1,6 @@
+import PropTypes from "prop-types";
+import { dateRangeShape } from "../src/lib/prop-types.js";
+
 export default function DateRangeFilter({ dateRange, maxEndDate, onChange }) {
   return (
     <label className="inline-flex h-11 items-center gap-2 rounded-2xl bg-slate-100 px-4 text-sm font-medium text-slate-900 transition hover:bg-slate-200 focus-within:ring-2 focus-within:ring-slate-300">
@@ -20,3 +23,9 @@ export default function DateRangeFilter({ dateRange, maxEndDate, onChange }) {
     </label>
   );
 }
+
+DateRangeFilter.propTypes = {
+  dateRange: dateRangeShape.isRequired,
+  maxEndDate: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+};

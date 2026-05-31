@@ -25,7 +25,7 @@ function numberEnv(name, fallback) {
   const parsed = Number(value);
 
   if (!Number.isFinite(parsed)) {
-    throw new Error(`${name} must be a number`);
+    throw new TypeError(`${name} must be a number`);
   }
 
   return parsed;

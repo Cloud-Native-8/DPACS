@@ -1,4 +1,6 @@
+import PropTypes from "prop-types";
 import { formatTime, getDateKeyFromTimestamp } from "../src/lib/date-format.js";
+import { deniedAccessDetailShape } from "../src/lib/prop-types.js";
 import ModalShell from "./ModalShell.jsx";
 
 export default function AnomalyDetailModal({
@@ -35,7 +37,7 @@ export default function AnomalyDetailModal({
                 onChange={() => onStatusChange(false)}
                 className="h-4 w-4 rounded border-slate-300 text-blue-500 focus:ring-blue-200"
               />
-              待處理
+              <span>待處理</span>
             </label>
             <label className="inline-flex items-center gap-1 text-sm text-slate-950">
               <input
@@ -45,7 +47,7 @@ export default function AnomalyDetailModal({
                 onChange={() => onStatusChange(true)}
                 className="h-4 w-4 rounded border-slate-300 text-emerald-500 focus:ring-emerald-200"
               />
-              已確認
+              <span>已確認</span>
             </label>
           </fieldset>
         </div>
@@ -97,6 +99,15 @@ export default function AnomalyDetailModal({
     </ModalShell>
   );
 }
+
+AnomalyDetailModal.propTypes = {
+  data: deniedAccessDetailShape,
+  isUpdating: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onStatusChange: PropTypes.func.isRequired,
+  selectedStatus: PropTypes.bool.isRequired,
+  statusError: PropTypes.string,
+};
 
 function buildAccessRows(records) {
   const rows = [];

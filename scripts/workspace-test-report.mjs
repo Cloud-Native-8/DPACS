@@ -105,7 +105,7 @@ async function findTestFiles(root) {
     await walk(root);
   }
 
-  return files.sort();
+  return files.sort((left, right) => left.localeCompare(right));
 }
 
 function decodeXml(value) {
@@ -139,7 +139,12 @@ function parseJunit(xml, packageName, suiteLabel) {
     const body = match[2] ?? "";
     const hasFailure = /<(failure|error)\b/.test(body);
     const hasSkipped = /<skipped\b/.test(body);
-    const status = hasFailure ? "failed" : hasSkipped ? "skipped" : "passed";
+    let status = "passed";
+    if (hasFailure) {
+      status = "failed";
+    } else if (hasSkipped) {
+      status = "skipped";
+    }
 
     testcases.push({
       packageName,
@@ -176,8 +181,8 @@ function statusIcon(status) {
 
 function escapeMarkdown(value) {
   return String(value)
-    .replaceAll("\\", "\\\\")
-    .replaceAll("|", "\\|")
+    .replaceAll("\\", String.raw`\\`)
+    .replaceAll("|", String.raw`\|`)
     .replaceAll("\n", " ");
 }
 
