@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: access-check-loadgen
+  namespace: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: access-check-loadgen
+  template:
+    metadata:
+      labels:
+        app: access-check-loadgen
+    spec:
+      containers:
+        - name: access-check-loadgen
+          image: curlimages/curl:8.8.0
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              set -u
+
+              ACCESS_URL="${ACCESS_URL:-http://access/check}"
+              WORKERS="${WORKERS:-30}"
+              EMPLOYEES_PER_WORKER="${EMPLOYEES_PER_WORKER:-20}"
+              ACCESS_POINT_ID="${ACCESS_POINT_ID:-1}"
+              SITE_ID="${SITE_ID:-1}"
+              REQUEST_SLEEP_SECONDS="${REQUEST_SLEEP_SECONDS:-0.02}"
+              BETWEEN_IN_OUT_SLEEP_SECONDS="${BETWEEN_IN_OUT_SLEEP_SECONDS:-2}"
+              CYCLE_SLEEP_SECONDS="${CYCLE_SLEEP_SECONDS:-6}"
+
+              echo "Starting access check load generator..."
+              echo "ACCESS_URL=${ACCESS_URL}"
+              echo "WORKERS=${WORKERS}"
+              echo "EMPLOYEES_PER_WORKER=${EMPLOYEES_PER_WORKER}"
+              echo "ACCESS_POINT_ID=${ACCESS_POINT_ID}"
+              echo "SITE_ID=${SITE_ID}"
+              echo "REQUEST_SLEEP_SECONDS=${REQUEST_SLEEP_SECONDS}"
+              echo "BETWEEN_IN_OUT_SLEEP_SECONDS=${BETWEEN_IN_OUT_SLEEP_SECONDS}"
+              echo "CYCLE_SLEEP_SECONDS=${CYCLE_SLEEP_SECONDS}"
+
+              send_request() {
+                employee_id="$1"
+                direction="$2"
+
+                curl -sS -m 3 -X POST "${ACCESS_URL}" \
+                  -H "content-type: application/json" \
+                  -d "{
+                    \"employee_id\": ${employee_id},
+                    \"access_point_id\": ${ACCESS_POINT_ID},
+                    \"site_id\": ${SITE_ID},
+                    \"direction\": \"${direction}\"
+                  }" >/dev/null || echo "request failed employee_id=${employee_id} direction=${direction}"
+              }
+
+              run_worker() {
+                worker_id="$1"
+                base_employee_id=$((worker_id * EMPLOYEES_PER_WORKER + 1))
+                cycle=1
+
+                echo "worker ${worker_id} started, employee range starts at ${base_employee_id}"
+
+                while true; do
+                  echo "worker ${worker_id} cycle ${cycle}: IN round"
+
+                  i=0
+                  while [ "$i" -lt "$EMPLOYEES_PER_WORKER" ]; do
+                    employee_id=$((base_employee_id + i))
+                    send_request "$employee_id" "in"
+                    i=$((i + 1))
+                    sleep "${REQUEST_SLEEP_SECONDS}"
+                  done
+
+                  echo "worker ${worker_id} cycle ${cycle}: IN done"
+                  sleep "${BETWEEN_IN_OUT_SLEEP_SECONDS}"
+
+                  echo "worker ${worker_id} cycle ${cycle}: OUT round"
+
+                  i=0
+                  while [ "$i" -lt "$EMPLOYEES_PER_WORKER" ]; do
+                    employee_id=$((base_employee_id + i))
+                    send_request "$employee_id" "out"
+                    i=$((i + 1))
+                    sleep "${REQUEST_SLEEP_SECONDS}"
+                  done
+
+                  echo "worker ${worker_id} cycle ${cycle}: OUT done"
+                  cycle=$((cycle + 1))
+                  sleep "${CYCLE_SLEEP_SECONDS}"
+                done
+              }
+
+              worker_id=0
+              while [ "$worker_id" -lt "$WORKERS" ]; do
+                run_worker "$worker_id" &
+                worker_id=$((worker_id + 1))
+              done
+
+              wait
+          env:
+            - name: ACCESS_URL
+              value: "http://access/check"
+            - name: WORKERS
+              value: "20"
+            - name: EMPLOYEES_PER_WORKER
+              value: "30"
+            - name: ACCESS_POINT_ID
+              value: "1"
+            - name: SITE_ID
+              value: "1"
+            - name: REQUEST_SLEEP_SECONDS
+              value: "0.02"
+            - name: BETWEEN_IN_OUT_SLEEP_SECONDS
+              value: "2"
+            - name: CYCLE_SLEEP_SECONDS
+              value: "6"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "1000m"
+              memory: "256Mi"
